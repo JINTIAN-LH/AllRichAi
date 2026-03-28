@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="game-container" data-turn="{{ snapshot.day }}">
+  <header class="game-header">
+    <div class="game-header-title">【 躺平农场主：共同富裕计划 】</div>
+    <div class="time-bar" id="header-line">第 {{ snapshot.day }} 天 | {{ snapshot.time }} | {{ snapshot.season }} | {{ snapshot.weather }} | 系统 Lv.{{ snapshot.systemLevel }}</div>
+  </header>
+
+  <main class="panel-grid">
+    <section class="status-panel">
+      <div class="status-panel-header">📊 全局状态</div>
+      <div class="status-grid">
+        <div class="status-item"><div class="status-item-label">资金</div><div class="status-item-value" id="money-value">{{ snapshot.money }} 元</div></div>
+        <div class="status-item"><div class="status-item-label">微粒</div><div class="status-item-value" id="particle-value">{{ snapshot.particle }}</div></div>
+        <div class="status-item"><div class="status-item-label">生命源能</div><div class="status-item-value" id="energy-value">{{ snapshot.energy }}</div></div>
+        <div class="status-item"><div class="status-item-label">躺平意愿</div><div class="status-item-value" id="lazy-value">{{ snapshot.lazyWill }}</div></div>
+        <div class="status-item"><div class="status-item-label">村民支持度</div><div class="status-item-value" id="support-value">{{ snapshot.villagerSupport }}</div></div>
+        <div class="status-item"><div class="status-item-label">家庭和睦度</div><div class="status-item-value" id="family-value">{{ snapshot.familyHarmony }}</div></div>
+        <div class="status-item"><div class="status-item-label">品牌知名度</div><div class="status-item-value" id="brand-value">{{ snapshot.brand }}</div></div>
+        <div class="status-item"><div class="status-item-label">公司</div><div class="status-item-value" id="company-value">{{ snapshot.company }}</div></div>
+        <div class="status-item"><div class="status-item-label">土地</div><div class="status-item-value" id="land-value">{{ snapshot.land }} 亩</div></div>
+      </div>
+    </section>
+
+    <section class="roles-panel">
+      <div class="roles-panel-headline">
+        <div class="roles-panel-header">👤 角色状态</div>
+        <button type="button" class="btn btn-primary" onclick="openRolesModal()">查看角色详情</button>
+      </div>
+      <div class="roles-preview" id="roles-preview">共 {{ snapshot.roles|length }} 位角色，点击按钮查看完整状态</div>
+    </section>
+
+    <section class="event-panel">
+      <div class="event-panel-header">🌱 作物状态</div>
+      <div class="event-panel-content" id="crop-text">{{ snapshot.crops.text }}</div>
+    </section>
+
+    <section class="event-panel">
+      <div class="event-panel-header">📰 当前事件</div>
+      <div class="event-panel-content" id="event-text">{{ snapshot.events }}</div>
+    </section>
+
+    <section class="commands-panel">
+      <div class="commands-panel-header">🎯 可下达指令</div>
+      <div class="commands-grid" id="commands-grid">
+        {% for cmd in snapshot.commands %}
+        <div class="command-item" onclick="executeFixedCommand('{{ loop.index }}','{{ cmd }}')">{{ cmd }}</div>
+        {% endfor %}
+      </div>
+      <div class="mt-16">
+        <input type="text" id="custom-input" class="custom-command-input" placeholder="7. 自定义指令：自由输入你想做的事" maxlength="200" onkeypress="if(event.key==='Enter') executeCustomCommand()">
+        <button class="btn btn-primary" onclick="executeCustomCommand()" style="width: 100%;">执行自定义指令</button>
+      </div>
+    </section>
+
+    <section class="result-panel" id="result-panel">
+      <button class="result-close" type="button" onclick="closeResultPanel()" aria-label="关闭结果">×</button>
+      <div class="result-panel-header">📝 执行结果</div>
+      <div class="result-text" id="result-text"></div>
+      <div class="result-changes">
+        <div class="result-changes-title">数值变化</div>
+        <div id="result-changes-list"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="loading-mask" id="loading-mask"><div class="loading-spinner"></div></div>
+
+<dialog id="roles-modal" class="story-modal">
+  <h3>角色状态总览</h3>
+  <button class="modal-close" type="button" onclick="closeRolesModal()" aria-label="关闭">×</button>
+  <div class="roles-list" id="roles-list">
+    {% for role in snapshot.roles %}
+    <div class="role-item">
+      {% if role.mood is defined %}
+      <div class="role-name">{{ role.name }}：{{ role.mood }} | 体力 {{ role.energy }}</div>
+      {% else %}
+      <div class="role-name">{{ role.name }}：好感 {{ role.favor }} | {{ role.state }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</dialog>
+
+<script>
+let isExecuting = false;
+
+function openRolesModal() {
+  const modal = document.getElementById('roles-modal');
+  if (modal && typeof modal.showModal === 'function') {
+    modal.showModal();
+  }
+}
+
+function closeRolesModal() {
+  const modal = document.getElementById('roles-modal');
+  if (modal && typeof modal.close === 'function' && modal.open) {
+    modal.close();
+  }
+}
+
+function closeResultPanel() {
+  const resultPanel = document.getElementById('result-panel');
+  if (resultPanel) resultPanel.classList.remove('active');
+}
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    closeRolesModal();
+    closeResultPanel();
+  }
+});
+
+function showLoading(show) {
+  const mask = document.getElementById('loading-mask');
+  if (show) mask.classList.add('active');
+  else mask.classList.remove('active');
+}
+
+function executeFixedCommand(index, commandText) {
+  const normalized = String(commandText || '').replace(/^\d+\.\s*/, '').trim();
+  executeCommand(String(index || normalized));
+}
+
+function executeCustomCommand() {
+  const input = document.getElementById('custom-input');
+  const value = (input.value || '').trim();
+  if (!value) return;
+  executeCommand(value);
+}
+
+async function executeCommand(command) {
+  if (!command || !String(command).trim() || isExecuting) return;
+  isExecuting = true;
+  showLoading(true);
+
+  try {
+    const response = await fetch('/api/story/execute-command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        command: String(command).trim(),
+        goal: '低压力推进经营并保持家庭关系稳定'
+      })
+    });
+    if (!response.ok) throw new Error('网络波动，请求失败');
+    const data = await response.json();
+
+    // 先刷新面板，再展示结果文本
+    await refreshPanelState();
+    displayResult(data);
+
+    const input = document.getElementById('custom-input');
+    if (input) input.value = '';
+  } catch (error) {
+    alert('执行失败：' + error.message);
+  } finally {
+    showLoading(false);
+    isExecuting = false;
+  }
+}
+
+async function refreshPanelState() {
+  const r = await fetch('/api/story/panel-state');
+  if (!r.ok) return;
+  const payload = await r.json();
+  if (!payload.success || !payload.snapshot) return;
+  applySnapshot(payload.snapshot);
+}
+
+function applySnapshot(s) {
+  const header = document.getElementById('header-line');
+  if (header) header.textContent = `第 ${s.day} 天 | ${s.time} | ${s.season} | ${s.weather} | 系统 Lv.${s.systemLevel}`;
+  setText('money-value', `${s.money} 元`);
+  setText('particle-value', s.particle);
+  setText('energy-value', s.energy);
+  setText('lazy-value', s.lazyWill);
+  setText('support-value', s.villagerSupport);
+  setText('family-value', s.familyHarmony);
+  setText('brand-value', s.brand);
+  setText('company-value', s.company);
+  setText('land-value', `${s.land} 亩`);
+  setText('crop-text', (s.crops && s.crops.text) ? s.crops.text : '无 | 未播种 | 剩余 0 天');
+  setText('event-text', s.events || '暂无事件');
+
+  const roles = document.getElementById('roles-list');
+  if (roles && Array.isArray(s.roles)) {
+    roles.innerHTML = '';
+    s.roles.forEach(role => {
+      const item = document.createElement('div');
+      item.className = 'role-item';
+      const name = document.createElement('div');
+      name.className = 'role-name';
+      if (Object.prototype.hasOwnProperty.call(role, 'mood')) {
+        name.textContent = `${role.name}：${role.mood} | 体力 ${role.energy}`;
+      } else {
+        name.textContent = `${role.name}：好感 ${role.favor} | ${role.state}`;
+      }
+      item.appendChild(name);
+      roles.appendChild(item);
+    });
+  }
+
+  const rolesPreview = document.getElementById('roles-preview');
+  if (rolesPreview) {
+    const count = Array.isArray(s.roles) ? s.roles.length : 0;
+    rolesPreview.textContent = `共 ${count} 位角色，点击按钮查看完整状态`;
+  }
+
+  const commands = document.getElementById('commands-grid');
+  if (commands && Array.isArray(s.commands)) {
+    commands.innerHTML = '';
+    s.commands.forEach((cmd, idx) => {
+      const item = document.createElement('div');
+      item.className = 'command-item';
+      item.textContent = cmd;
+      item.onclick = () => executeFixedCommand(idx + 1, cmd);
+      commands.appendChild(item);
+    });
+  }
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = String(value ?? '');
+}
+
+function displayResult(data) {
+  const resultPanel = document.getElementById('result-panel');
+  const resultText = document.getElementById('result-text');
+  const changesList = document.getElementById('result-changes-list');
+  resultText.textContent = data.result_text || '指令执行完成';
+
+  changesList.innerHTML = '';
+  if (data.stat_changes) {
+    Object.entries(data.stat_changes).forEach(([key, value]) => {
+      const change = document.createElement('div');
+      change.className = 'change-item';
+      const num = Number(value);
+      if (num > 0) change.className += ' change-positive';
+      if (num < 0) change.className += ' change-negative';
+      change.textContent = `${key}: ${num > 0 ? '+' : ''}${num}`;
+      changesList.appendChild(change);
+    });
+  }
+
+  resultPanel.classList.add('active');
+}
+</script>
+{% endblock %}

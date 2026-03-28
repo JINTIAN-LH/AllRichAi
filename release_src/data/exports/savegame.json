@@ -1,0 +1,191 @@
+{
+  "turn": 1,
+  "stage": "startup",
+  "resources": {
+    "money": 1800,
+    "particles": 600,
+    "source_energy": 0,
+    "prosperity": 0,
+    "laziness": 60
+  },
+  "system": {
+    "level": 2,
+    "daily_particles": 300,
+    "unlocked_skills": []
+  },
+  "plots": [
+    {
+      "plot_id": 1,
+      "crop_id": null,
+      "days_remaining": 0,
+      "ready_to_harvest": false
+    },
+    {
+      "plot_id": 2,
+      "crop_id": null,
+      "days_remaining": 0,
+      "ready_to_harvest": false
+    }
+  ],
+  "pens": [
+    {
+      "pen_id": 1,
+      "livestock_id": null,
+      "days_remaining": 0,
+      "ready_to_collect": false
+    }
+  ],
+  "inventory": {},
+  "characters": {
+    "liu_huaizhi": {
+      "favor": 0,
+      "unlocked": true
+    },
+    "liu_xiaoxue": {
+      "favor": 0,
+      "unlocked": true
+    },
+    "yang_dazhen": {
+      "favor": 0,
+      "unlocked": true
+    },
+    "wang_nan": {
+      "favor": 0,
+      "unlocked": true
+    },
+    "zhao_jiangxin": {
+      "favor": 0,
+      "unlocked": true
+    }
+  },
+  "tasks": {
+    "main_first_harvest": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "main_first_stream": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "main_meet_mentor": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "side_support_sister": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "side_partner_father": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "daily_plant": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "daily_chat": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "daily_stream": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "achievement_harvest_master": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "main_processing": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "main_hiring": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "achievement_dividend": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    }
+  },
+  "stats": {
+    "planted_count": 0,
+    "harvest_count": 0,
+    "interaction_count": 0,
+    "stream_count": 0,
+    "sales_revenue": 0,
+    "processed_batches": 0,
+    "villagers_hired": 0,
+    "dividend_rounds": 0,
+    "livestock_collections": 0,
+    "orders_completed": 0,
+    "ranch_expansions": 0,
+    "workshop_upgrades": 0,
+    "days_played": 1,
+    "current_turn_planted": 0,
+    "current_turn_interactions": 0,
+    "current_turn_streamed": 0,
+    "current_turn_processed": 0,
+    "interactions_by_character": {}
+  },
+  "company": {
+    "unlocked": false,
+    "employees": 0,
+    "dividend_rate": 0.0,
+    "brand_level": 0,
+    "cash_reserve": 0,
+    "wage_per_employee": 80,
+    "workshop_level": 1,
+    "ranch_capacity": 1,
+    "employee_morale": 60,
+    "profit_pool": 0,
+    "processing_fee_multiplier": 1.0,
+    "processing_output_multiplier": 1.0,
+    "order_reward_multiplier": 1.0,
+    "support_score": 0,
+    "brand_score": 0
+  },
+  "player_profile": {
+    "name": "刘洋",
+    "identity": "回乡青年",
+    "return_reason": "考研失利后希望以低压力方式重建生活"
+  },
+  "open_mode": {
+    "profile_saved": false,
+    "options_ready": false,
+    "last_scene": "",
+    "last_goal": "",
+    "last_options": [],
+    "last_play_result": "",
+    "last_stat_delta": ""
+  },
+  "partnerships": {
+    "science_progress": 0,
+    "government_progress": 0,
+    "business_progress": 0,
+    "village_progress": 0,
+    "science_unlocked": false,
+    "government_unlocked": false,
+    "business_unlocked": false,
+    "village_unlocked": false
+  },
+  "active_orders": [],
+  "flags": [],
+  "log": [
+    "考研三战失利后，刘洋回到了刘家村。",
+    "躺平智辅系统在强烈的回乡意愿下激活。",
+    "你要在个人躺平和带动全村增收之间找到平衡。"
+  ]
+}

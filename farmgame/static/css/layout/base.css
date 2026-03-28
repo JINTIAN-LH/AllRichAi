@@ -1,0 +1,245 @@
+/* Global shell and navigation layout. */
+
+.status-bar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 18px;
+  align-items: center;
+  padding: 14px 24px;
+  background: linear-gradient(90deg, rgba(20, 28, 22, 0.96), rgba(31, 46, 37, 0.96));
+  color: #efe3ce;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.status-bar h1 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2vw, 1.9rem);
+}
+
+.status-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.status-pills span {
+  font-size: 0.84rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.status-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.status-actions .story-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(35, 31, 26, 0.22);
+  background: var(--gold);
+  color: #26180f;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.status-actions a {
+  text-decoration: none;
+}
+
+.asset-version-badge {
+  font-size: 0.74rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(239, 227, 207, 0.92);
+}
+
+.page-shell {
+  width: min(1320px, calc(100% - 26px));
+  margin: 14px auto 112px;
+  height: calc(100vh - 140px);
+  overflow: hidden;
+}
+
+.flash {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(255, 249, 235, 0.88);
+  border: 1px solid rgba(171, 123, 44, 0.42);
+  box-shadow: var(--shadow);
+}
+
+.flash-close {
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  line-height: 1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #4a3b2a;
+  border: 1px solid rgba(35, 31, 26, 0.2);
+  font-size: 18px;
+}
+
+.flash-close:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: rgba(18, 22, 18, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bottom-nav a {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 52px;
+  color: #efe3cf;
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.bottom-nav a.active {
+  background: linear-gradient(120deg, rgba(47, 93, 74, 0.9), rgba(171, 123, 44, 0.82));
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.dashboard-grid,
+.chapter-strip {
+  max-height: 100%;
+  overflow: hidden;
+  padding-right: 4px;
+}
+
+@media (max-width: 1080px) {
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .status-bar {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .status-bar h1 {
+    font-size: clamp(1.05rem, 4.2vw, 1.25rem);
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .status-pills {
+    gap: 6px;
+  }
+
+  .status-pills span {
+    font-size: 0.76rem;
+    padding: 4px 8px;
+  }
+
+  .status-actions {
+    gap: 6px;
+    justify-self: end;
+  }
+
+  .status-actions .story-btn {
+    min-height: auto;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: #efe3ce;
+    font-family: "LXGW WenKai", "KaiTi", cursive;
+    font-size: clamp(1.05rem, 4.2vw, 1.25rem);
+    font-weight: 400;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .page-shell {
+    height: auto;
+    min-height: calc(100vh - 140px);
+    overflow: visible;
+  }
+
+  .dashboard-grid,
+  .chapter-strip {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .status-bar {
+    grid-template-columns: 1fr auto;
+    align-items: start;
+  }
+
+  .status-pills {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .status-bar {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .status-pills {
+    gap: 5px;
+  }
+
+  .status-pills span {
+    font-size: 0.72rem;
+    padding: 4px 7px;
+  }
+
+  .page-balance .status-actions {
+    display: none;
+  }
+}
+
+@media (min-width: 1081px) {
+  body {
+    overflow: hidden;
+  }
+
+  .bottom-nav {
+    min-height: 50px;
+    max-height: 50px;
+  }
+}

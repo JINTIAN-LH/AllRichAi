@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>躺平农场主：共同富裕计划</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v=asset_version) }}">
+    {% if page == 'story-panel' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='story_panel.css', v=asset_version) }}">
+    {% endif %}
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body class="page-{{ page }}">
+    <header class="status-bar">
+      <h1>躺平农场主：共同富裕计划</h1>
+      <div class="status-pills">
+        <span>第 {{ snapshot.turn }} 天</span>
+        <span>{{ snapshot.stage }}</span>
+        <span>资金 {{ snapshot.money }}</span>
+        <span>微粒 {{ snapshot.particles }}</span>
+        <span>源能 {{ snapshot.source_energy }}</span>
+      </div>
+      <div class="status-actions">
+        {% block header_actions %}{% endblock %}
+      </div>
+    </header>
+
+    <main class="page-shell">
+      {% if flash_message %}
+      <section class="flash">
+        <span>{{ flash_message }}</span>
+        <button class="flash-close" type="button" aria-label="关闭播报" onclick="this.closest('.flash').remove()">×</button>
+      </section>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <nav class="bottom-nav">
+      <a class="{% if page == 'home' %}active{% endif %}" href="{{ url_for('index') }}">主页</a>
+      <a class="{% if page == 'story-panel' %}active{% endif %}" href="{{ url_for('story_panel') }}">剧情页</a>
+      <a class="{% if page == 'balance' %}active{% endif %}" href="{{ url_for('balance_page') }}">个人中心</a>
+    </nav>
+  </body>
+</html>

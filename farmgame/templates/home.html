@@ -1,0 +1,505 @@
+{% extends 'base.html' %}
+
+{% block header_actions %}
+{% endblock %}
+
+{% block content %}
+<section class="home-hub">
+  <article class="card accent home-cockpit">
+    <h2>经营面板</h2>
+    <p class="empty">围绕“种植-加工-品牌-电商-共富”闭环推进，支持躺平自动化与深度经营双模式。</p>
+
+    <div class="stats">
+      <div><span>公司等级</span><strong>Lv{{ company_design.company_level }}</strong></div>
+      <div><span>综合盈利</span><strong>{{ company_design.total_profit }}</strong></div>
+      <div><span>村民支持度</span><strong>{{ company_design.support_score }}</strong></div>
+      <div><span>品牌热度</span><strong>{{ company_design.brand_score }}</strong></div>
+      <div><span>加工品类</span><strong>{{ company_design.processing_categories }}</strong></div>
+      <div><span>活跃订单</span><strong>{{ snapshot.active_orders }}</strong></div>
+    </div>
+    <div class="stats-progress">
+      <h4>共富指标进度</h4>
+      <div class="progress-item">
+        <label>村民支持度</label>
+        <div class="progress-bar">
+          <div class="progress-fill" data-progress="{{ company_design.support_score }}"></div>
+          <span class="progress-text">{{ company_design.support_score }}/100</span>
+        </div>
+      </div>
+      <div class="progress-item">
+        <label>品牌认可度</label>
+        <div class="progress-bar">
+          <div class="progress-fill" data-progress="{{ company_design.brand_score }}"></div>
+          <span class="progress-text">{{ company_design.brand_score }}/100</span>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <aside class="home-action-rail">
+    <article class="card quick-action-card">
+      <h3>当日执行</h3>
+      <div class="quick-ops">
+        <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="harvest"><button type="submit">收获</button></form>
+        <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="collect"><button type="submit">收取养殖</button></form>
+        <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="sell_market"><button type="submit">集市销售</button></form>
+        <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="sell_stream"><button type="submit">直播销售</button></form>
+        <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="advance_day"><button type="submit">推进一天</button></form>
+        <button type="button" onclick="document.getElementById('modal-warehouse').showModal()">查看仓库</button>
+      </div>
+    </article>
+
+    <article class="card module-card">
+      <h3>经营模块入口</h3>
+      <div class="module-buttons">
+        <button type="button" onclick="document.getElementById('modal-farm').showModal()">农田</button>
+        <button type="button" onclick="document.getElementById('modal-ranch').showModal()">养殖与护栏</button>
+        <button type="button" onclick="document.getElementById('modal-process').showModal()">加工车间</button>
+        <button type="button" onclick="document.getElementById('modal-order').showModal()">订单履约</button>
+        <button type="button" onclick="document.getElementById('modal-company').showModal()">公司治理</button>
+        <button type="button" onclick="document.getElementById('modal-character').showModal()">村民与角色</button>
+        <button type="button" onclick="document.getElementById('modal-skill').showModal()">系统辅助</button>
+        <button type="button" onclick="document.getElementById('modal-open').showModal()">开放玩法（LLM）</button>
+      </div>
+    </article>
+  </aside>
+</section>
+
+<div class="home-fab-row">
+  <button class="side-toggle" type="button" onclick="document.getElementById('home-side').classList.toggle('open')">任务日志</button>
+  <button class="side-toggle settings-toggle" type="button" onclick="document.getElementById('settings-modal').showModal()">设置</button>
+</div>
+<aside id="home-side" class="side-drawer">
+  <h3>任务与日志</h3>
+  <div class="two-column">
+    <ul class="status-list compact">{% for task in tasks %}<li>{{ task }}</li>{% endfor %}</ul>
+    <ul class="status-list compact journal">{% for log in logs %}<li>{{ log }}</li>{% endfor %}</ul>
+  </div>
+</aside>
+
+<dialog id="modal-farm" class="story-modal">
+  <h3>农田</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('modal-farm').close()">×</button>
+  <ul class="status-list">{% for plot in plots %}<li>{{ plot }}</li>{% endfor %}</ul>
+  <form class="stack-form" method="post" action="{{ url_for('action') }}">
+    <input type="hidden" name="next" value="home"><input type="hidden" name="action" value="plant">
+    <label>地块编号<input name="plot_id" type="number" min="1" value="1"></label>
+    <label>作物<select name="crop_id">{% for crop_id, crop_name in crops.items() %}<option value="{{ crop_id }}">{{ crop_name }} / 成本 {{ crop_defs[crop_id].seed_cost }}</option>{% endfor %}</select></label>
+    <button type="submit">播种</button>
+  </form>
+</dialog>
+
+<dialog id="modal-warehouse" class="story-modal">
+  <h3>仓库可售物品总览</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('modal-warehouse').close()">×</button>
+  <ul class="status-list compact">
+    {% for item in sellable_items %}
+    <li>
+      <strong>{{ item.name }}</strong>
+      <span class="state-tag">{{ item.category }}</span>
+      <p>库存数量：{{ item.quantity }} | 参考售价：{{ item.sell_price }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+</dialog>
+
+<dialog id="modal-ranch" class="story-modal">
+  <h3>养殖与护栏</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('modal-ranch').close()">×</button>
+  <ul class="status-list">{% for pen in pens %}<li>{{ pen }}</li>{% endfor %}</ul>
+  <form class="stack-form" method="post" action="{{ url_for('action') }}">
+    <input type="hidden" name="next" value="home"><input type="hidden" name="action" value="raise_livestock">
+    <label>棚舍编号<input name="pen_id" type="number" min="1" value="1"></label>
+    <label>品种<select name="livestock_id">{% for livestock_id, livestock_name in livestocks.items() %}<option value="{{ livestock_id }}">{{ livestock_name }} / 成本 {{ livestock_defs[livestock_id].buy_cost }}</option>{% endfor %}</select></label>
+    <button type="submit">开始养殖</button>
+  </form>
+  <form class="stack-form" method="post" action="{{ url_for('action') }}">
+    <input type="hidden" name="next" value="home"><input type="hidden" name="action" value="expand_ranch">
+    <label>扩栏数量<input name="blocks" type="number" min="1" value="1"></label>
+    <button type="submit">执行扩栏</button>
+  </form>
+</dialog>
+
+<dialog id="modal-process" class="story-modal">
+  <h3>加工</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('modal-process').close()">×</button>
+  {% if recipes %}
+  <form class="stack-form" method="post" action="{{ url_for('action') }}">
+    <input type="hidden" name="next" value="home"><input type="hidden" name="action" value="process">
+    <label>配方<select name="recipe_id">{% for recipe_id, recipe_name in recipes.items() %}<option value="{{ recipe_id }}">{{ recipe_name }} / 费用 {{ recipe_defs[recipe_id].processing_fee }}</option>{% endfor %}</select></label>
+    <label>批次<input name="batches" type="number" min="1" value="1"></label>
+    <button type="submit">执行加工</button>
+  </form>
+  {% else %}<p class="empty">先解锁“农产品加工坊”技能。</p>{% endif %}
+  <form class="stack-form" method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="upgrade_workshop"><button type="submit">升级加工坊</button></form>
+</dialog>
+
+<dialog id="modal-order" class="story-modal">
+  <h3>订单</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('modal-order').close()">×</button>
+  <ul class="status-list compact">{% for order in orders %}<li>{{ order }}</li>{% endfor %}</ul>
+  <form class="stack-form" method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="fulfill_order"><label>订单名称<input name="order_id" type="text" placeholder="例如：城郊生鲜店补货"></label><button type="submit">交付订单</button></form>
+</dialog>
+
+<dialog id="modal-company" class="story-modal">
+  <h3>公司治理</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('modal-company').close()">×</button>
+  <ul class="status-list compact">{% for row in company %}<li>{{ row }}</li>{% endfor %}</ul>
+  <div class="button-row">
+    <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="prepare_company"><button type="submit">成立公司</button></form>
+    <form method="post" action="{{ url_for('action') }}" class="mini-form"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="hire"><input name="count" type="number" min="1" value="1"><button type="submit">雇佣村民</button></form>
+    <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="dividends"><button type="submit">分红</button></form>
+  </div>
+  
+  {% if company_design.partnerships %}
+  <hr style="margin: 20px 0;">
+  <h4>合作伙伴进度</h4>
+  <div class="partnership-grid">
+    {% for partner_key, partner_data in company_design.partnerships.items() %}
+    <div class="partnership-card">
+      <div class="partnership-header">
+        <strong>{{ partner_data.name }}</strong>
+        <span class="partnership-status">{% if partner_data.unlocked %}✓ 已解锁{% else %}进行中{% endif %}</span>
+      </div>
+      <div class="partnership-progress">
+        <div class="progress-bar">
+          <div class="progress-fill" data-progress="{{ partner_data.progress }}"></div>
+          <span class="progress-text">{{ partner_data.progress }}/100</span>
+        </div>
+      </div>
+      {% if not partner_data.unlocked %}
+      <form method="post" action="{{ url_for('action') }}" style="margin-top: 8px;">
+        <input type="hidden" name="next" value="home">
+        <input type="hidden" name="action" value="advance_partnership">
+        <input type="hidden" name="partner_type" value="{{ partner_key }}">
+        <button type="submit" class="partnership-btn" title="消耗 30 能量">推进合作</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</dialog>
+
+<dialog id="modal-character" class="story-modal">
+  <h3>人物互动</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('modal-character').close()">×</button>
+  <ul class="status-list compact">{% for character in characters %}<li>{{ character }}</li>{% endfor %}</ul>
+  <form class="stack-form" method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="interact"><label>角色<select name="character_id">{% for character_id, definition in character_defs.items() %}<option value="{{ character_id }}">{{ definition.name }} / {{ definition.role }}</option>{% endfor %}</select></label><button type="submit">互动</button></form>
+</dialog>
+
+<dialog id="modal-skill" class="story-modal">
+  <h3>系统技能</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('modal-skill').close()">×</button>
+  <div class="status-list compact">
+    {% for skill_id, skill in skills.items() %}
+    <form class="inline-form" method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="unlock_skill"><input type="hidden" name="skill_id" value="{{ skill_id }}"><div><strong>{{ skill.name }}</strong><p>{{ skill.description }}</p></div><button {% if skill_id in unlocked_skills %}disabled{% endif %} type="submit">{% if skill_id in unlocked_skills %}已解锁{% else %}消耗 {{ skill.energy_cost }}{% endif %}</button></form>
+    {% endfor %}
+  </div>
+</dialog>
+
+<dialog id="modal-open" class="story-modal">
+  <h3>第 {{ snapshot.turn }} 天 · 开放行动</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('modal-open').close()">×</button>
+  <div id="open-error-banner" class="open-error-banner" hidden role="status" aria-live="polite">
+    <span id="open-error-text"></span>
+    <button type="button" class="open-error-close" onclick="hideOpenError(true)" aria-label="关闭提示">×</button>
+  </div>
+
+  <div id="open-play-result" class="play-result" {% if not open_mode.last_play_result %}style="display:none"{% endif %}>
+    <h4>上次推演结果</h4>
+    <p id="open-play-result-text">{{ open_mode.last_play_result }}</p>
+    <div id="open-play-stat-delta" class="stat-delta" {% if not open_mode.last_stat_delta %}style="display:none"{% endif %}>数值变化：{{ open_mode.last_stat_delta }}</div>
+  </div>
+
+  <input type="hidden" id="open-scene-input" value="{{ open_mode.last_scene or ('刘家村，第' ~ snapshot.turn ~ '天') }}">
+
+  <div id="open-loading-mask" class="open-loading-mask" hidden aria-live="polite" role="status">
+    <div class="open-loading-box">故事正在加载中...</div>
+  </div>
+  <h4>行动建议（点击即执行）</h4>
+  <div id="open-option-cards" class="option-cards">
+    {% if current_options %}
+    {% for opt in current_options %}
+    <button type="button" class="option-card" onclick="submitOpenAction(this.textContent.trim())">{{ opt }}</button>
+    {% endfor %}
+    {% endif %}
+  </div>
+
+  <div class="custom-action-row">
+    <input id="custom-action-text" type="text" placeholder="自定义行动，输入后点执行…" maxlength="200">
+    <button type="button" class="story-btn" onclick="submitOpenAction(document.getElementById('custom-action-text').value)">执行</button>
+  </div>
+  <form class="stack-form" method="post" action="{{ url_for('action') }}">
+    <input type="hidden" name="next" value="home">
+    <input type="hidden" name="action" value="open_suggest">
+    <input type="hidden" name="scene" value="{{ open_mode.last_scene or ('刘家村，第' ~ snapshot.turn ~ '天') }}">
+    <input type="hidden" name="goal" value="低压力推进经营并保持家庭关系稳定">
+    <button type="submit" class="ghost" {% if not open_mode.profile_saved %}disabled{% endif %}>重新生成 LLM 行动建议</button>
+  </form>
+</dialog>
+
+<dialog id="modal-profile-setup" class="story-modal">
+  <h3>主角设定</h3>
+  <p class="empty">设定后锁定，不可修改。确认后开始冒险。</p>
+  <form class="stack-form" method="post" action="{{ url_for('action') }}">
+    <input type="hidden" name="next" value="home">
+    <input type="hidden" name="action" value="update_profile">
+    <label>主角姓名<input type="text" name="player_name" value="{{ player_profile.name }}" maxlength="32" required></label>
+    <label>主角身份<input type="text" name="player_identity" value="{{ player_profile.identity }}" maxlength="64" required></label>
+    <label>回乡理由<textarea name="player_return_reason" rows="2" maxlength="200">{{ player_profile.return_reason }}</textarea></label>
+    <button type="submit">确定主角，开始冒险</button>
+  </form>
+</dialog>
+
+<dialog id="settings-modal" class="story-modal">
+  <h3>主页设置</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('settings-modal').close()">×</button>
+  <p>涉及存档的操作统一在这里管理。</p>
+
+  <hr style="margin: 20px 0;">
+  <h4>LLM API 配置</h4>
+  <p class="empty">支持直接在这里输入自己的模型配置，保存后立即生效。</p>
+  <div class="button-row" style="margin-bottom: 10px;">
+    <select id="llm-example-provider" aria-label="选择示例模板">
+      <option value="dashscope">阿里云 DashScope（通义千问兼容）</option>
+      <option value="openai_compatible">OpenAI 兼容接口（通用）</option>
+    </select>
+    <button type="button" onclick="fillLlmConfigExample()">导入示例模板</button>
+  </div>
+  <form class="stack-form" method="post" action="{{ url_for('action') }}">
+    <input type="hidden" name="next" value="home">
+    <input type="hidden" name="action" value="save_llm_config">
+    <label>API Base（可选）<input name="llm_api_base" type="text" value="{{ llm_config.api_base }}" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"></label>
+    <label>Endpoint（推荐）<input name="llm_endpoint" type="text" value="{{ llm_config.endpoint }}" placeholder="https://xxx/chat/completions"></label>
+    <label>API Key<input name="llm_api_key" type="password" value="{{ llm_config.api_key }}" placeholder="sk-..." autocomplete="off"></label>
+    <label>主模型<input name="llm_model" type="text" value="{{ llm_config.model }}" placeholder="qwen3-max"></label>
+    <label>聊天模型<input name="llm_chat_model" type="text" value="{{ llm_config.chat_model }}" placeholder="qwen3-max"></label>
+    <label>超时秒数<input name="llm_timeout_seconds" type="number" min="3" max="60" value="{{ llm_config.timeout_seconds }}"></label>
+    <button type="submit">保存并加载配置</button>
+  </form>
+  <form class="stack-form llm-test-form" method="post" action="{{ url_for('action') }}" style="margin-top: 10px;">
+    <input type="hidden" name="next" value="home">
+    <input type="hidden" name="action" value="test_llm_config">
+    <button type="submit">测试当前 LLM 配置连通性</button>
+  </form>
+  <details style="margin-top: 10px;">
+    <summary>粘贴 JSON 一键加载</summary>
+    <form class="stack-form" method="post" action="{{ url_for('action') }}" style="margin-top: 10px;">
+      <input type="hidden" name="next" value="home">
+      <input type="hidden" name="action" value="save_llm_config">
+      <label>JSON 配置
+        <textarea name="llm_config_json" rows="7" placeholder='{"api_key":"sk-...","api_base":"https://.../v1","model":"qwen3-max"}'></textarea>
+      </label>
+      <button type="submit">加载 JSON 配置</button>
+    </form>
+  </details>
+
+  <hr style="margin: 20px 0;">
+    <h4>存档管理</h4>
+  <div class="button-row save-actions-row">
+    <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="new_game"><button type="submit">新开局</button></form>
+    <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="save_game"><button type="submit">保存当前进度</button></form>
+  </div>
+  <ul class="status-list compact">
+    {% for slot in save_slots %}
+    <li>
+      <div class="slot-row">
+        <span>槽位 {{ slot.slot }} {% if slot.exists %}已占用{% else %}空{% endif %}</span>
+        <div>
+          <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="save_slot"><input type="hidden" name="slot" value="{{ slot.slot }}"><button type="submit">存</button></form>
+          <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="load_slot"><input type="hidden" name="slot" value="{{ slot.slot }}"><button type="submit">读</button></form>
+          <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="delete_slot"><input type="hidden" name="slot" value="{{ slot.slot }}"><button type="submit">删</button></form>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</dialog>
+
+<div
+  id="home-bootstrap"
+  data-profile-saved="{{ '1' if open_mode.profile_saved else '0' }}"
+  data-next-modal="{{ next_modal }}"
+  hidden
+></div>
+
+<script>
+let openActionInFlight = false;
+let openErrorTimer = 0;
+let openErrorFadeTimer = 0;
+
+function fillLlmConfigExample() {
+  const providerEl = document.getElementById('llm-example-provider');
+  const provider = providerEl ? providerEl.value : 'dashscope';
+
+  const examples = {
+    dashscope: {
+      api_base: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+      model: 'qwen3-max',
+      chat_model: 'qwen3-max',
+      timeout_seconds: 10
+    },
+    openai_compatible: {
+      api_base: 'https://api.openai.com/v1',
+      endpoint: 'https://api.openai.com/v1/chat/completions',
+      model: 'gpt-4o-mini',
+      chat_model: 'gpt-4o-mini',
+      timeout_seconds: 10
+    }
+  };
+
+  const config = examples[provider] || examples.dashscope;
+  const map = {
+    llm_api_base: config.api_base,
+    llm_endpoint: config.endpoint,
+    llm_model: config.model,
+    llm_chat_model: config.chat_model,
+    llm_timeout_seconds: String(config.timeout_seconds)
+  };
+
+  Object.keys(map).forEach((name) => {
+    const input = document.querySelector(`#settings-modal [name="${name}"]`);
+    if (input) input.value = map[name];
+  });
+}
+
+function setOpenLoading(isLoading) {
+  const mask = document.getElementById('open-loading-mask');
+  if (!mask) return;
+  mask.style.display = isLoading ? 'flex' : 'none';
+  mask.hidden = !isLoading;
+  mask.setAttribute('aria-hidden', isLoading ? 'false' : 'true');
+}
+
+function showOpenError(message) {
+  const banner = document.getElementById('open-error-banner');
+  const text = document.getElementById('open-error-text');
+  if (!banner || !text) return;
+  if (openErrorTimer) clearTimeout(openErrorTimer);
+  if (openErrorFadeTimer) clearTimeout(openErrorFadeTimer);
+  banner.classList.remove('is-hiding');
+  text.textContent = message || '网络波动，操作未完成，请重试。';
+  banner.hidden = false;
+  openErrorTimer = setTimeout(function() {
+    banner.classList.add('is-hiding');
+    openErrorFadeTimer = setTimeout(function() {
+      hideOpenError(true);
+    }, 280);
+  }, 4000);
+}
+
+function hideOpenError(force) {
+  const banner = document.getElementById('open-error-banner');
+  const text = document.getElementById('open-error-text');
+  if (!banner || !text) return;
+  if (openErrorTimer) clearTimeout(openErrorTimer);
+  if (openErrorFadeTimer) clearTimeout(openErrorFadeTimer);
+  openErrorTimer = 0;
+  openErrorFadeTimer = 0;
+  banner.classList.remove('is-hiding');
+  banner.hidden = true;
+  if (force !== false) text.textContent = '';
+}
+
+function renderOpenOptions(options) {
+  const container = document.getElementById('open-option-cards');
+  if (!container) return;
+  const safeOptions = Array.isArray(options) ? options : [];
+  container.innerHTML = '';
+  safeOptions.forEach(function(opt) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'option-card';
+    btn.textContent = String(opt || '').trim();
+    btn.onclick = function() { submitOpenAction(btn.textContent || ''); };
+    container.appendChild(btn);
+  });
+}
+
+async function submitOpenAction(action) {
+  const safeAction = (action || '').trim();
+  if (!safeAction) return;
+  if (openActionInFlight) return;
+
+  openActionInFlight = true;
+  hideOpenError();
+  setOpenLoading(true);
+  let timeoutId = 0;
+  try {
+    const scene = (document.getElementById('open-scene-input') || {}).value || '刘家村村口';
+    const body = new URLSearchParams({ scene: scene, open_action: safeAction });
+    const controller = new AbortController();
+    const timeoutMs = 20000;
+    timeoutId = setTimeout(function() {
+      controller.abort();
+    }, timeoutMs);
+    const resp = await fetch('{{ url_for("api_open_mode_play") }}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: body.toString(),
+      signal: controller.signal
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) {
+      throw new Error(data.message || '推演失败，请稍后重试。');
+    }
+
+    const resultWrap = document.getElementById('open-play-result');
+    const resultText = document.getElementById('open-play-result-text');
+    const statDelta = document.getElementById('open-play-stat-delta');
+    if (resultWrap && resultText) {
+      resultWrap.style.display = '';
+      resultText.textContent = data.message || '推演完成。';
+    }
+    if (statDelta) {
+      if (data.stat_delta) {
+        statDelta.style.display = '';
+        statDelta.textContent = '数值变化：' + data.stat_delta;
+      } else {
+        statDelta.style.display = 'none';
+      }
+    }
+    renderOpenOptions(data.next_options || []);
+
+    const customInput = document.getElementById('custom-action-text');
+    if (customInput) customInput.value = '';
+  } catch (err) {
+    const message = (err && err.name === 'AbortError')
+      ? '请求超时（20秒），已自动关闭加载层，请检查网络后重试。'
+      : ((err && err.message) ? err.message : '推演失败，请稍后重试。');
+    showOpenError(message);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+    openActionInFlight = false;
+    setOpenLoading(false);
+  }
+}
+document.addEventListener('DOMContentLoaded', function() {
+  setOpenLoading(false);
+
+  const boot = document.getElementById('home-bootstrap');
+  const profileSaved = boot ? boot.dataset.profileSaved === '1' : true;
+  const nextModal = boot ? (boot.dataset.nextModal || '').trim() : '';
+
+  if (!profileSaved) {
+    const profileModal = document.getElementById('modal-profile-setup');
+    if (profileModal && typeof profileModal.showModal === 'function') {
+      profileModal.showModal();
+    }
+  } else if (nextModal) {
+    const modal = document.getElementById(nextModal);
+    if (modal && typeof modal.showModal === 'function') {
+      modal.showModal();
+    }
+  }
+
+  document.querySelectorAll('.progress-fill[data-progress]').forEach((el) => {
+    const raw = Number(el.getAttribute('data-progress'));
+    const safe = Number.isFinite(raw) ? Math.max(0, Math.min(100, raw)) : 0;
+    el.style.width = `${safe}%`;
+  });
+});
+</script>
+{% endblock %}

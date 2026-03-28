@@ -1,0 +1,255 @@
+{
+  "turn": 17,
+  "time": "傍晚",
+  "season": "初夏",
+  "weather": "微风",
+  "stage": "scale_up",
+  "resources": {
+    "money": 7492,
+    "particles": 290,
+    "source_energy": 5,
+    "prosperity": 27,
+    "laziness": 29,
+    "villager_support": 10,
+    "family_harmony": 88,
+    "land": 0.5
+  },
+  "system": {
+    "level": 3,
+    "daily_particles": 3000,
+    "unlocked_skills": [
+      "smart_irrigation",
+      "live_boost",
+      "automation_kit"
+    ]
+  },
+  "plots": [
+    {
+      "plot_id": 1,
+      "crop_id": null,
+      "days_remaining": 0,
+      "ready_to_harvest": false
+    },
+    {
+      "plot_id": 2,
+      "crop_id": null,
+      "days_remaining": 0,
+      "ready_to_harvest": false
+    },
+    {
+      "plot_id": 3,
+      "crop_id": null,
+      "days_remaining": 0,
+      "ready_to_harvest": false
+    }
+  ],
+  "pens": [
+    {
+      "pen_id": 1,
+      "livestock_id": "hens",
+      "days_remaining": 0,
+      "ready_to_collect": true
+    },
+    {
+      "pen_id": 2,
+      "livestock_id": null,
+      "days_remaining": 0,
+      "ready_to_collect": false
+    }
+  ],
+  "inventory": {},
+  "characters": {
+    "liu_huaizhi": {
+      "favor": 4,
+      "unlocked": true
+    },
+    "liu_xiaoxue": {
+      "favor": 5,
+      "unlocked": true
+    },
+    "yang_dazhen": {
+      "favor": 4,
+      "unlocked": true
+    },
+    "wang_nan": {
+      "favor": 12,
+      "unlocked": true
+    },
+    "zhao_jiangxin": {
+      "favor": 0,
+      "unlocked": true
+    }
+  },
+  "tasks": {
+    "main_first_harvest": {
+      "completed": true,
+      "claimed": true,
+      "progress": 4
+    },
+    "main_first_stream": {
+      "completed": true,
+      "claimed": true,
+      "progress": 1
+    },
+    "main_meet_mentor": {
+      "completed": false,
+      "claimed": false,
+      "progress": 1
+    },
+    "side_support_sister": {
+      "completed": false,
+      "claimed": false,
+      "progress": 5
+    },
+    "side_partner_father": {
+      "completed": false,
+      "claimed": false,
+      "progress": 4
+    },
+    "daily_plant": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "daily_chat": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "daily_stream": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "achievement_harvest_master": {
+      "completed": false,
+      "claimed": false,
+      "progress": 4
+    },
+    "main_processing": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "main_hiring": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    },
+    "achievement_dividend": {
+      "completed": false,
+      "claimed": false,
+      "progress": 0
+    }
+  },
+  "stats": {
+    "planted_count": 4,
+    "harvest_count": 4,
+    "interaction_count": 4,
+    "stream_count": 1,
+    "sales_revenue": 1632,
+    "processed_batches": 0,
+    "villagers_hired": 0,
+    "dividend_rounds": 0,
+    "livestock_collections": 0,
+    "orders_completed": 0,
+    "ranch_expansions": 0,
+    "workshop_upgrades": 0,
+    "days_played": 17,
+    "current_turn_planted": 0,
+    "current_turn_interactions": 0,
+    "current_turn_streamed": 0,
+    "current_turn_processed": 0,
+    "interactions_by_character": {
+      "liu_huaizhi": 1,
+      "liu_xiaoxue": 1,
+      "yang_dazhen": 1,
+      "wang_nan": 1
+    }
+  },
+  "company": {
+    "unlocked": false,
+    "employees": 0,
+    "dividend_rate": 0.0,
+    "brand_level": 0,
+    "cash_reserve": 0,
+    "wage_per_employee": 80,
+    "workshop_level": 1,
+    "ranch_capacity": 1,
+    "employee_morale": 60,
+    "profit_pool": 489,
+    "processing_fee_multiplier": 1.0,
+    "processing_output_multiplier": 1.0,
+    "order_reward_multiplier": 1.0,
+    "support_score": 10,
+    "brand_score": 2
+  },
+  "player_profile": {
+    "name": "刘洋",
+    "identity": "回乡青年",
+    "return_reason": "考研失利后希望以低压力方式重建生活"
+  },
+  "open_mode": {
+    "profile_saved": true,
+    "options_ready": true,
+    "last_scene": "刘家村，第 17 天，清晨",
+    "last_goal": "低压力推进经营并保持家庭关系稳定",
+    "last_options": [
+      "把今天重点放在加工链路，尝试提升单位产出",
+      "把今天重点放在订单履约，稳住信誉并积累品牌",
+      "把今天重点放在人力协作，优化分工与执行节奏"
+    ],
+    "last_play_result": "刘洋在“刘家村，第 16 天，清晨”执行了“优先处理关系：拜访家人和村干部，争取协同与政策支持”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村里对你的信任明显提高，后续合作也更顺畅。本次行动即时结算：资金 +80，微粒 +70，共富 +3，躺平值 -1。\n【日结】第 17 天开始。今日自动获得 3000 微粒。",
+    "last_stat_delta": "资金 +80  |  共富 +3  |  微粒 +70  |  源能 +3"
+  },
+  "partnerships": {
+    "science_progress": 0,
+    "government_progress": 0,
+    "business_progress": 0,
+    "village_progress": 0,
+    "science_unlocked": false,
+    "government_unlocked": false,
+    "business_unlocked": false,
+    "village_unlocked": false
+  },
+  "active_orders": [
+    {
+      "order_id": "fresh_bundle",
+      "title": "城郊生鲜店补货",
+      "required_items": {
+        "vegetable": 4,
+        "egg": 2
+      },
+      "reward_money": 2200,
+      "reward_prosperity": 2,
+      "reward_particles": 300,
+      "completed": false
+    },
+    {
+      "order_id": "campus_milk",
+      "title": "高校后勤奶制品采购",
+      "required_items": {
+        "milk": 4,
+        "rice": 3
+      },
+      "reward_money": 4200,
+      "reward_prosperity": 3,
+      "reward_particles": 500,
+      "completed": false
+    }
+  ],
+  "event_text": "微风的傍晚，村口传来消息，明天集市会更热闹。",
+  "flags": [],
+  "log": [
+    "系统技能已解锁：直播流量加持。",
+    "阶段升级：你已进入产业升级期。",
+    "开放玩法：尝试一次高收益动作，接受波动换取阶段性突破",
+    "初夏的风裹着泥土与青草味，从窗缝钻进堂屋。父亲蹲在门槛边擦锄头，眉头微皱，像在盘算什么。\n【叮！】当前资金：7072元｜声望粒子：180｜家庭和睦度：87\n你鼓起勇气提议用全部积蓄注册个体户、建简易包装车间，想把村里山货做成品牌。父亲愣了半晌，叹口气：“败光了可别哭。”但还是默默翻出存折。\n当晚，母亲端来热汤，轻声说：“你爸夜里三点还在画车间草图。”",
+    "新订单到达：高校后勤奶制品采购。",
+    "新的一天开始了，系统完成日常结算。",
+    "开放玩法：优先处理关系：拜访家人和村干部，争取协同与政策支持",
+    "刘洋在“刘家村，第 16 天，清晨”执行了“优先处理关系：拜访家人和村干部，争取协同与政策支持”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村里对你的信任明显提高，后续合作也更顺畅。本次行动即时结算：资金 +80，微粒 +70，共富 +3，躺平值 -1。",
+    "新的一天开始了，系统完成日常结算。",
+    "系统技能已解锁：自动化控制组件。"
+  ]
+}

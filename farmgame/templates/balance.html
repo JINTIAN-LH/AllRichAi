@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block header_actions %}
+<a class="story-btn" href="{{ url_for('index') }}">返回主页</a>
+{% endblock %}
+
+{% block content %}
+<section class="dashboard-grid profile-center-grid">
+  <article class="card wide profile-center-card">
+    <h2>个人中心</h2>
+    <p class="empty">经营核心：组织架构、升级路线、资源策略、共富目标与自动化运营。</p>
+
+    <div class="profile-board">
+      <h3>主角档案</h3>
+      <div class="profile-lines">
+        <p><strong>{{ snapshot.player_name }}</strong> · {{ snapshot.player_identity }}</p>
+        <p>{{ snapshot.player_return_reason }}</p>
+      </div>
+    </div>
+
+    <div class="profile-board">
+      <h3>经营关键指标</h3>
+      <div class="panel-stats">
+        <div><span>天数</span><strong>第 {{ snapshot.turn }} 天</strong></div>
+        <div><span>阶段</span><strong>{{ snapshot.stage }}</strong></div>
+        <div><span>公司等级</span><strong>Lv{{ company_design.company_level }}</strong></div>
+        <div><span>综合盈利</span><strong>{{ company_design.total_profit }}</strong></div>
+        <div><span>资金</span><strong>{{ snapshot.money }}</strong></div>
+        <div><span>微粒</span><strong>{{ snapshot.particles }}</strong></div>
+        <div><span>源能</span><strong>{{ snapshot.source_energy }}</strong></div>
+        <div><span>共富</span><strong>{{ snapshot.prosperity }}</strong></div>
+        <div><span>村民支持度</span><strong>{{ company_design.support_score }}</strong></div>
+        <div><span>品牌热度</span><strong>{{ company_design.brand_score }}</strong></div>
+        <div><span>雇员</span><strong>{{ snapshot.employees }}</strong></div>
+        <div><span>加工坊</span><strong>Lv{{ snapshot.workshop_level }}</strong></div>
+      </div>
+    </div>
+
+    <div class="profile-board">
+      <h3>核心模块清单</h3>
+      <ul class="status-list compact core-module-list">
+        {% for module in company_design.core_modules %}
+        <li>
+          <strong>{{ module.name }}</strong>
+          <span class="state-tag">{{ module.status }}</span>
+          <p>{{ module.detail }}</p>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="profile-board">
+      <h3>公司等级路线（1-5级）</h3>
+      <div class="stage-goal-grid">
+        {% for goal in company_design.stage_goals %}
+        <article class="goal-card {% if goal.ready %}ready{% endif %}">
+          <h4>Lv{{ goal.level }} · {{ goal.name }}</h4>
+          <p>{{ goal.target }}</p>
+          <small>{% if goal.ready %}条件达成{% else %}待推进{% endif %}</small>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="profile-board">
+      <h4>共富指标进度追踪</h4>
+      <div class="progress-grid">
+        <div class="progress-card">
+          <h5>村民支持度</h5>
+          <div class="progress-circle" style="--progress: {{ company_design.support_score }}%; --size: 120px;">
+            <span class="progress-number">{{ company_design.support_score }}</span>
+            <span class="progress-label">/ 100</span>
+          </div>
+          <p class="progress-desc">反映玩家对村民的关照程度</p>
+        </div>
+        <div class="progress-card">
+          <h5>品牌认可度</h5>
+          <div class="progress-circle" style="--progress: {{ company_design.brand_score }}%; --size: 120px;">
+            <span class="progress-number">{{ company_design.brand_score }}</span>
+            <span class="progress-label">/ 100</span>
+          </div>
+          <p class="progress-desc">反映产品和企业的市场认可</p>
+        </div>
+      </div>
+    </div>
+
+    <ul class="status-list compact">
+      <li>当前基础日薪：{{ company.wage_per_employee }}</li>
+      <li>当前分红比例：{{ (company.dividend_rate * 100)|int }}%</li>
+      <li>加工费用倍率：{{ company.processing_fee_multiplier }}</li>
+      <li>加工产出倍率：{{ company.processing_output_multiplier }}</li>
+      <li>订单奖励倍率：{{ company.order_reward_multiplier }}</li>
+    </ul>
+  </article>
+</section>
+
+<button class="story-btn balance-float-btn" type="button" onclick="document.getElementById('balance-config-modal').showModal()">平衡参数设置</button>
+
+<dialog id="balance-config-modal" class="story-modal">
+  <h3>平衡参数设置</h3>
+  <button class="modal-close" type="button" onclick="document.getElementById('balance-config-modal').close()">×</button>
+  <h4>预设方案（一键应用）</h4>
+  <div class="preset-row">
+    <form method="post" action="{{ url_for('balance_apply') }}" class="preset-form">
+      <input type="hidden" name="wage_per_employee" value="90">
+      <input type="hidden" name="dividend_rate_percent" value="10">
+      <input type="hidden" name="processing_fee_multiplier" value="1.00">
+      <input type="hidden" name="processing_output_multiplier" value="1.00">
+      <input type="hidden" name="order_reward_multiplier" value="1.00">
+      <button type="submit">稳健型</button>
+    </form>
+    <form method="post" action="{{ url_for('balance_apply') }}" class="preset-form">
+      <input type="hidden" name="wage_per_employee" value="105">
+      <input type="hidden" name="dividend_rate_percent" value="12">
+      <input type="hidden" name="processing_fee_multiplier" value="0.95">
+      <input type="hidden" name="processing_output_multiplier" value="1.20">
+      <input type="hidden" name="order_reward_multiplier" value="1.15">
+      <button type="submit">成长型</button>
+    </form>
+    <form method="post" action="{{ url_for('balance_apply') }}" class="preset-form">
+      <input type="hidden" name="wage_per_employee" value="135">
+      <input type="hidden" name="dividend_rate_percent" value="20">
+      <input type="hidden" name="processing_fee_multiplier" value="1.25">
+      <input type="hidden" name="processing_output_multiplier" value="1.45">
+      <input type="hidden" name="order_reward_multiplier" value="1.35">
+      <button type="submit">高风险型</button>
+    </form>
+  </div>
+  <p class="empty">稳健型适合保现金流，成长型适合扩张节奏，高风险型收益高但波动更大。</p>
+  <h4>手动微调</h4>
+  <form class="stack-form" method="post" action="{{ url_for('balance_apply') }}">
+    <label>基础日薪
+      <input type="number" name="wage_per_employee" min="40" max="300" value="{{ company.wage_per_employee }}">
+    </label>
+    <label>分红比例（%）
+      <input type="number" name="dividend_rate_percent" min="5" max="40" step="1" value="{{ (company.dividend_rate * 100)|int }}">
+    </label>
+    <label>加工费用倍率
+      <input type="number" name="processing_fee_multiplier" min="0.5" max="1.8" step="0.05" value="{{ company.processing_fee_multiplier }}">
+    </label>
+    <label>加工产出倍率
+      <input type="number" name="processing_output_multiplier" min="0.7" max="2.2" step="0.05" value="{{ company.processing_output_multiplier }}">
+    </label>
+    <label>订单奖励倍率
+      <input type="number" name="order_reward_multiplier" min="0.6" max="2.0" step="0.05" value="{{ company.order_reward_multiplier }}">
+    </label>
+    <button type="submit">应用参数</button>
+  </form>
+</dialog>
+{% endblock %}

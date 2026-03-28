@@ -1,0 +1,22 @@
+/* Global resets and typography baseline. */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  background:
+    radial-gradient(circle at 5% 0%, rgba(171, 123, 44, 0.28), transparent 34%),
+    radial-gradient(circle at 95% 18%, rgba(47, 93, 74, 0.22), transparent 28%),
+    linear-gradient(160deg, #f6efde 0%, #eadfc8 35%, #e4d7bc 100%);
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+strong {
+  font-family: "LXGW WenKai", "KaiTi", cursive;
+}

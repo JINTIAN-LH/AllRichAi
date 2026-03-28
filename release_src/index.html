@@ -1,0 +1,384 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>躺平农场主：共同富裕计划（静态发布版）</title>
+    <link rel="stylesheet" href="./assets/styles.css">
+  </head>
+  <body>
+    <header class="status-bar">
+      <div class="status-main">
+        <h1>躺平农场主：共同富裕计划</h1>
+        <div id="header-line" class="header-line">第 1 天 | 清晨 | 春 | 晴 | 系统 Lv.1</div>
+      </div>
+      <div class="status-pills" id="status-pills"></div>
+      <div class="status-actions">
+        <button id="btn-open-settings" class="story-btn ghost" type="button">设置</button>
+        <button id="btn-save-game" class="story-btn" type="button">保存</button>
+        <button id="btn-new-game" class="story-btn emphasis" type="button">新开局</button>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section id="flash" class="flash" hidden>
+        <span id="flash-text"></span>
+        <button class="flash-close" id="flash-close" type="button" aria-label="关闭">×</button>
+      </section>
+
+      <section id="page-home" class="page active">
+        <section class="home-hub">
+          <article class="card accent home-cockpit">
+            <h2>经营面板</h2>
+            <p class="empty">围绕种植、加工、品牌、电商与共富闭环推进，静态版直接由前端引擎结算。</p>
+            <div class="stats" id="home-stats"></div>
+            <div class="stats-progress">
+              <h4>共富指标进度</h4>
+              <div class="progress-item">
+                <label>村民支持度</label>
+                <div class="progress-bar">
+                  <div id="support-progress" class="progress-fill"></div>
+                  <span id="support-progress-text" class="progress-text">0/100</span>
+                </div>
+              </div>
+              <div class="progress-item">
+                <label>品牌认可度</label>
+                <div class="progress-bar">
+                  <div id="brand-progress" class="progress-fill brand"></div>
+                  <span id="brand-progress-text" class="progress-text">0/100</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <aside class="home-action-rail">
+            <article class="card quick-action-card">
+              <h3>当日执行</h3>
+              <div class="quick-ops quick-ops-grid">
+                <button data-action="harvest" type="button">收获</button>
+                <button data-action="collect" type="button">收取养殖</button>
+                <button data-action="sell_market" type="button">集市销售</button>
+                <button data-action="sell_stream" type="button">直播销售</button>
+                <button data-action="advance_day" type="button">推进一天</button>
+                <button data-open="modal-inventory" type="button">查看仓库</button>
+              </div>
+            </article>
+
+            <article class="card module-card">
+              <h3>经营模块入口</h3>
+              <div class="module-buttons">
+                <button data-open="modal-farm" type="button">农田</button>
+                <button data-open="modal-ranch" type="button">养殖与护栏</button>
+                <button data-open="modal-process" type="button">加工车间</button>
+                <button data-open="modal-order" type="button">订单履约</button>
+                <button data-open="modal-company" type="button">公司治理</button>
+                <button data-open="modal-characters" type="button">村民与角色</button>
+                <button data-open="modal-skills" type="button">系统辅助</button>
+                <button data-open="modal-partnerships" type="button">合作推进</button>
+                <button data-open="modal-open" type="button">开放玩法</button>
+              </div>
+            </article>
+          </aside>
+        </section>
+
+        <div class="home-fab-row">
+          <button id="btn-toggle-drawer" class="side-toggle" type="button">任务日志</button>
+          <button id="btn-open-profile" class="side-toggle settings-toggle" type="button">主角设定</button>
+        </div>
+
+        <aside id="home-side" class="side-drawer" aria-label="任务与日志抽屉">
+          <div class="drawer-head">
+            <h3>任务与日志</h3>
+            <button id="btn-close-drawer" class="drawer-close" type="button" aria-label="关闭抽屉">×</button>
+          </div>
+          <div class="two-column">
+            <ul id="task-list" class="status-list compact"></ul>
+            <ul id="log-list" class="status-list compact journal"></ul>
+          </div>
+        </aside>
+      </section>
+
+      <section id="page-story" class="page">
+        <section class="game-container">
+          <header class="game-header">
+            <div class="game-header-title">【 躺平农场主：共同富裕计划 】</div>
+            <div class="time-bar" id="story-header-line">第 1 天 | 清晨 | 春 | 晴 | 系统 Lv.1</div>
+          </header>
+
+          <main class="panel-grid">
+            <section class="status-panel">
+              <div class="status-panel-header">全局状态</div>
+              <div class="status-grid" id="story-status-grid"></div>
+            </section>
+
+            <section class="roles-panel">
+              <div class="roles-panel-headline">
+                <div class="roles-panel-header">角色状态</div>
+                <button id="btn-open-roles" type="button" class="panel-btn">查看角色详情</button>
+              </div>
+              <div class="roles-preview" id="roles-preview">角色状态加载中</div>
+            </section>
+
+            <section class="event-panel">
+              <div class="event-panel-header">作物状态</div>
+              <div class="event-panel-content" id="crop-text"></div>
+            </section>
+
+            <section class="event-panel">
+              <div class="event-panel-header">当前事件</div>
+              <div class="event-panel-content" id="event-text"></div>
+            </section>
+
+            <section class="commands-panel">
+              <div class="commands-panel-header">可下达指令</div>
+              <div class="commands-grid" id="story-commands"></div>
+              <div class="mt-16 command-entry">
+                <input type="text" id="story-custom-input" class="custom-command-input" placeholder="自由输入你想做的事" maxlength="200">
+                <button id="story-custom-submit" class="panel-btn primary" type="button">执行自定义指令</button>
+              </div>
+            </section>
+
+            <section class="result-panel" id="result-panel">
+              <button class="result-close" id="btn-close-result" type="button" aria-label="关闭结果">×</button>
+              <div class="result-panel-header">执行结果</div>
+              <div class="result-text" id="story-result">点击任意指令开始推进剧情。</div>
+              <div class="result-changes">
+                <div class="result-changes-title">数值变化</div>
+                <div id="result-changes-list" class="change-list"></div>
+              </div>
+            </section>
+          </main>
+        </section>
+      </section>
+
+      <section id="page-balance" class="page">
+        <section class="dashboard-grid profile-center-grid">
+          <article class="card wide profile-center-card">
+            <h2>个人中心</h2>
+            <p class="empty">围绕组织架构、升级路线、资源策略、共富目标与自动化运营来复盘当前局面。</p>
+
+            <div class="profile-board">
+              <h3>主角档案</h3>
+              <div id="profile-lines" class="profile-lines"></div>
+            </div>
+
+            <div class="profile-board">
+              <h3>经营关键指标</h3>
+              <div id="balance-stats" class="panel-stats"></div>
+            </div>
+
+            <div class="profile-board">
+              <h3>核心模块清单</h3>
+              <ul id="core-module-list" class="status-list compact core-module-list"></ul>
+            </div>
+
+            <div class="profile-board">
+              <h3>公司等级路线（1-5级）</h3>
+              <div id="stage-goal-grid" class="stage-goal-grid"></div>
+            </div>
+
+            <div class="profile-board">
+              <h4>共富指标进度追踪</h4>
+              <div id="progress-grid" class="progress-grid"></div>
+            </div>
+
+            <div class="profile-board">
+              <h4>当前参数快照</h4>
+              <ul id="balance-config-list" class="status-list compact"></ul>
+            </div>
+          </article>
+        </section>
+
+        <button id="btn-open-balance-config" class="story-btn balance-float-btn" type="button">平衡参数设置</button>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="active" data-page="home" type="button">主页</button>
+      <button data-page="story" type="button">剧情页</button>
+      <button data-page="balance" type="button">个人中心</button>
+    </nav>
+
+    <div class="loading-mask" id="loading-mask" hidden>
+      <div class="loading-box">故事正在加载中...</div>
+    </div>
+
+    <dialog id="roles-modal" class="story-modal slim-modal">
+      <h3>角色状态总览</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <div id="roles-list" class="roles-list"></div>
+    </dialog>
+
+    <dialog id="modal-farm" class="story-modal">
+      <h3>农田</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <ul id="farm-list" class="status-list"></ul>
+      <form id="farm-form" class="stack-form">
+        <label>地块编号<input name="plotId" type="number" min="1" value="1"></label>
+        <label>作物<select name="cropId"></select></label>
+        <button type="submit">播种</button>
+      </form>
+    </dialog>
+
+    <dialog id="modal-inventory" class="story-modal">
+      <h3>仓库可售物品总览</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <ul id="inventory-list" class="status-list compact"></ul>
+    </dialog>
+
+    <dialog id="modal-ranch" class="story-modal">
+      <h3>养殖与护栏</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <ul id="ranch-list" class="status-list"></ul>
+      <div class="quick-ops">
+        <button id="btn-expand-ranch" type="button">扩栏 +1</button>
+      </div>
+      <form id="ranch-form" class="stack-form">
+        <label>棚舍编号<input name="penId" type="number" min="1" value="1"></label>
+        <label>品种<select name="livestockId"></select></label>
+        <button type="submit">开始养殖</button>
+      </form>
+    </dialog>
+
+    <dialog id="modal-process" class="story-modal">
+      <h3>加工</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <p class="empty">加工配方、费用和产出会随技能、阶段与加工坊等级变化。</p>
+      <div class="quick-ops">
+        <button id="btn-upgrade-workshop" type="button">升级加工坊</button>
+      </div>
+      <form id="process-form" class="stack-form">
+        <label>配方<select name="recipeId"></select></label>
+        <label>批次<input name="batches" type="number" min="1" value="1"></label>
+        <button type="submit">执行加工</button>
+      </form>
+    </dialog>
+
+    <dialog id="modal-order" class="story-modal">
+      <h3>订单</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <ul id="order-list" class="status-list compact"></ul>
+      <form id="order-form" class="stack-form">
+        <label>订单名称<input name="orderTitle" type="text" placeholder="例如：城郊生鲜店补货"></label>
+        <button type="submit">交付订单</button>
+      </form>
+    </dialog>
+
+    <dialog id="modal-company" class="story-modal">
+      <h3>公司治理</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <ul id="company-list" class="status-list compact"></ul>
+      <div class="quick-ops">
+        <button data-company="prepare" type="button">成立公司</button>
+        <button data-company="hire" type="button">雇佣 1 名村民</button>
+        <button data-company="dividend" type="button">执行分红</button>
+      </div>
+    </dialog>
+
+    <dialog id="modal-characters" class="story-modal">
+      <h3>人物互动</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <ul id="character-list" class="status-list compact"></ul>
+      <div id="character-actions" class="module-buttons"></div>
+    </dialog>
+
+    <dialog id="modal-skills" class="story-modal">
+      <h3>系统技能</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <ul id="skill-list" class="status-list compact"></ul>
+      <div id="skill-actions" class="module-buttons"></div>
+    </dialog>
+
+    <dialog id="modal-partnerships" class="story-modal">
+      <h3>合作推进</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <ul id="partnership-list" class="status-list compact"></ul>
+      <div id="partnership-actions" class="module-buttons"></div>
+    </dialog>
+
+    <dialog id="modal-open" class="story-modal">
+      <h3 id="open-modal-title">开放行动</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <div id="open-loading-flash" class="open-loading-flash" hidden>故事正在加载中...</div>
+      <div id="open-result" class="play-result">选择一个行动开始推演。</div>
+      <div id="open-stat-delta" class="stat-delta" hidden></div>
+      <h4>行动建议（点击即执行）</h4>
+      <div id="open-options" class="option-cards"></div>
+      <div class="custom-action-row">
+        <input id="open-custom-input" type="text" placeholder="自定义行动，输入后点执行" maxlength="200">
+        <button id="open-custom-submit" class="story-btn" type="button">执行</button>
+      </div>
+      <button id="btn-refresh-open-options" class="story-btn ghost wide-btn" type="button">重新生成行动建议</button>
+    </dialog>
+
+    <dialog id="modal-profile-setup" class="story-modal">
+      <h3>主角设定</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <p class="empty">设定后锁定，不可修改。确认后，开放玩法建议才会开始生成。</p>
+      <form id="profile-form" class="stack-form">
+        <label>主角姓名<input type="text" name="playerName" maxlength="32" required></label>
+        <label>主角身份<input type="text" name="playerIdentity" maxlength="64" required></label>
+        <label>回乡理由<textarea name="playerReturnReason" rows="3" maxlength="200"></textarea></label>
+        <button id="profile-submit" type="submit">确定主角，开始冒险</button>
+      </form>
+    </dialog>
+
+    <dialog id="settings-modal" class="story-modal">
+      <h3>主页设置</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <p>涉及存档与开放玩法中转的操作统一在这里管理。</p>
+
+      <h4>LLM 中转接口</h4>
+      <div class="bridge-settings stack-form">
+        <label class="switch-line">
+          <input id="bridge-enabled" type="checkbox">
+          <span>启用中转接口，失败时自动回退规则文本</span>
+        </label>
+        <label>中转 Endpoint<input id="bridge-endpoint" type="text" placeholder="https://your-proxy.example.com/open-resolve"></label>
+        <label>模型标识（可选）<input id="bridge-model" type="text" placeholder="qwen3-max / gpt-4o-mini 等"></label>
+        <label>请求超时（毫秒）<input id="bridge-timeout" type="number" min="3000" max="60000" step="1000" value="15000"></label>
+        <label class="switch-line">
+          <input id="bridge-sign-enabled" type="checkbox">
+          <span>附带签名字段预留</span>
+        </label>
+        <label>clientId（可选）<input id="bridge-client-id" type="text" placeholder="your-client-id"></label>
+        <label>signVersion（可选）<input id="bridge-sign-version" type="text" placeholder="v1"></label>
+        <div class="quick-ops">
+          <button id="settings-save-bridge" type="button">保存中转配置</button>
+          <button id="settings-test-bridge" type="button">测试中转连通性</button>
+        </div>
+        <p id="bridge-status" class="empty">当前模式：规则文本兜底</p>
+      </div>
+
+      <hr class="section-divider">
+      <h4>存档管理</h4>
+      <div class="quick-ops save-actions-row">
+        <button id="settings-new-game" type="button">新开局</button>
+        <button id="settings-save-game" type="button">保存当前进度</button>
+      </div>
+      <ul id="slot-list" class="status-list compact"></ul>
+    </dialog>
+
+    <dialog id="balance-config-modal" class="story-modal">
+      <h3>平衡参数设置</h3>
+      <button class="modal-close" data-close type="button">×</button>
+      <h4>预设方案（一键应用）</h4>
+      <div id="preset-row" class="preset-row"></div>
+      <p class="empty">稳健型保现金流，成长型适合扩张，高风险型收益更高但波动更大。</p>
+      <h4>手动微调</h4>
+      <form id="balance-form" class="stack-form">
+        <label>基础日薪<input type="number" name="wagePerEmployee" min="40" max="300"></label>
+        <label>分红比例（%）<input type="number" name="dividendRate" min="5" max="40" step="1"></label>
+        <label>加工费用倍率<input type="number" name="processingFeeMultiplier" min="0.5" max="1.8" step="0.05"></label>
+        <label>加工产出倍率<input type="number" name="processingOutputMultiplier" min="0.7" max="2.2" step="0.05"></label>
+        <label>订单奖励倍率<input type="number" name="orderRewardMultiplier" min="0.6" max="2.0" step="0.05"></label>
+        <button type="submit">应用参数</button>
+      </form>
+      <button id="btn-projection" class="story-btn ghost wide-btn" type="button">预测未来 7 天</button>
+      <p id="projection-text" class="empty"></p>
+    </dialog>
+
+    <script src="./assets/engine.js"></script>
+    <script src="./assets/app.js"></script>
+  </body>
+</html>

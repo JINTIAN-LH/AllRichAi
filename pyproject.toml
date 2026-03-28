@@ -1,0 +1,8 @@
+[project]
+name = "allrichai-farmgame"
+version = "0.1.0"
+description = "《躺平农场主：共同富裕计划》文字经营原型"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

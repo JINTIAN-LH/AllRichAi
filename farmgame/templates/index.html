@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>躺平农场主：共同富裕计划</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <header class="status-bar">
+      <h1>躺平农场主：共同富裕计划</h1>
+      <div class="status-pills">
+        <span>第 {{ snapshot.turn }} 天</span>
+        <span>{{ snapshot.stage }}</span>
+        <span>资金 {{ snapshot.money }}</span>
+        <span>微粒 {{ snapshot.particles }}</span>
+        <span>源能 {{ snapshot.source_energy }}</span>
+        <span>共富 {{ snapshot.prosperity }}</span>
+        <span>士气 {{ snapshot.employee_morale }}</span>
+      </div>
+      <div class="status-actions">
+        <form method="post" action="{{ url_for('action') }}">
+          <input type="hidden" name="action" value="new_game">
+          <button class="ghost" type="submit">新开局</button>
+        </form>
+        <form method="post" action="{{ url_for('action') }}">
+          <input type="hidden" name="action" value="save_game">
+          <button type="submit">快速保存</button>
+        </form>
+        <button class="story-btn" onclick="document.getElementById('story-modal').showModal()" type="button">剧情弹窗</button>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      {% if flash_message %}
+      <section class="flash">{{ flash_message }}</section>
+      {% endif %}
+
+      <section class="chapter-strip">
+        {% for card in chapter_cards %}
+        <article class="chapter-card {% if card.active %}active{% endif %}">
+          <p>{{ card.volume }}</p>
+          <h2>{{ card.title }}</h2>
+          <span class="state-tag">{{ card.state }}</span>
+          <div class="progress">
+            <i style="width: {{ card.progress }}%;"></i>
+          </div>
+          <small>{{ card.progress }}%</small>
+          <p class="chapter-summary">{{ card.summary }}</p>
+        </article>
+        {% endfor %}
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="card accent overview-card">
+          <h2>经营总览</h2>
+          <div class="stats">
+            <div><span>雇员</span><strong>{{ snapshot.employees }}</strong></div>
+            <div><span>品牌</span><strong>{{ snapshot.brand_level }}</strong></div>
+            <div><span>加工坊</span><strong>Lv{{ snapshot.workshop_level }}</strong></div>
+            <div><span>养殖容量</span><strong>{{ snapshot.ranch_capacity }}</strong></div>
+            <div><span>日薪</span><strong>{{ snapshot.wage_per_employee }}</strong></div>
+            <div><span>活跃订单</span><strong>{{ snapshot.active_orders }}</strong></div>
+          </div>
+          <div class="quick-ops">
+            <form method="post" action="{{ url_for('action') }}">
+              <input type="hidden" name="action" value="harvest"><button type="submit">收获</button>
+            </form>
+            <form method="post" action="{{ url_for('action') }}">
+              <input type="hidden" name="action" value="collect"><button type="submit">收取养殖</button>
+            </form>
+            <form method="post" action="{{ url_for('action') }}">
+              <input type="hidden" name="action" value="sell_market"><button type="submit">集市销售</button>
+            </form>
+            <form method="post" action="{{ url_for('action') }}">
+              <input type="hidden" name="action" value="sell_stream"><button type="submit">直播销售</button>
+            </form>
+            <form method="post" action="{{ url_for('action') }}">
+              <input type="hidden" name="action" value="advance_day"><button type="submit">推进一天</button>
+            </form>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>多存档槽位</h2>
+          <ul class="status-list compact">
+            {% for slot in save_slots %}
+            <li>
+              <div class="slot-row">
+                <span>槽位 {{ slot.slot }} {% if slot.exists %}已占用{% else %}空{% endif %}</span>
+                <div>
+                  <form method="post" action="{{ url_for('action') }}">
+                    <input type="hidden" name="action" value="save_slot">
+                    <input type="hidden" name="slot" value="{{ slot.slot }}">
+                    <button type="submit">存</button>
+                  </form>
+                  <form method="post" action="{{ url_for('action') }}">
+                    <input type="hidden" name="action" value="load_slot">
+                    <input type="hidden" name="slot" value="{{ slot.slot }}">
+                    <button type="submit">读</button>
+                  </form>
+                  <form method="post" action="{{ url_for('action') }}">
+                    <input type="hidden" name="action" value="delete_slot">
+                    <input type="hidden" name="slot" value="{{ slot.slot }}">
+                    <button class="ghost" type="submit">删</button>
+                  </form>
+                </div>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>农田</h2>
+          <ul class="status-list">{% for plot in plots %}<li>{{ plot }}</li>{% endfor %}</ul>
+          <form class="stack-form" method="post" action="{{ url_for('action') }}">
+            <input type="hidden" name="action" value="plant">
+            <label>地块编号<input name="plot_id" type="number" min="1" value="1"></label>
+            <label>作物
+              <select name="crop_id">{% for crop_id, crop_name in crops.items() %}<option value="{{ crop_id }}">{{ crop_name }} / 成本 {{ crop_defs[crop_id].seed_cost }}</option>{% endfor %}</select>
+            </label>
+            <button type="submit">播种</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>养殖与扩栏</h2>
+          <ul class="status-list">{% for pen in pens %}<li>{{ pen }}</li>{% endfor %}</ul>
+          <form class="stack-form" method="post" action="{{ url_for('action') }}">
+            <input type="hidden" name="action" value="raise_livestock">
+            <label>棚舍编号<input name="pen_id" type="number" min="1" value="1"></label>
+            <label>品种
+              <select name="livestock_id">{% for livestock_id, livestock_name in livestocks.items() %}<option value="{{ livestock_id }}">{{ livestock_name }} / 成本 {{ livestock_defs[livestock_id].buy_cost }}</option>{% endfor %}</select>
+            </label>
+            <button type="submit">开始养殖</button>
+          </form>
+          <form class="stack-form" method="post" action="{{ url_for('action') }}">
+            <input type="hidden" name="action" value="expand_ranch">
+            <label>扩栏数量<input name="blocks" type="number" min="1" value="1"></label>
+            <button type="submit">执行扩栏</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>加工坊升级</h2>
+          {% if recipes %}
+          <form class="stack-form" method="post" action="{{ url_for('action') }}">
+            <input type="hidden" name="action" value="process">
+            <label>配方
+              <select name="recipe_id">{% for recipe_id, recipe_name in recipes.items() %}<option value="{{ recipe_id }}">{{ recipe_name }} / 费用 {{ recipe_defs[recipe_id].processing_fee }}</option>{% endfor %}</select>
+            </label>
+            <label>批次<input name="batches" type="number" min="1" value="1"></label>
+            <button type="submit">执行加工</button>
+          </form>
+          {% else %}
+          <p class="empty">先解锁 processing_workshop 才能启用加工配方。</p>
+          {% endif %}
+          <form class="stack-form" method="post" action="{{ url_for('action') }}">
+            <input type="hidden" name="action" value="upgrade_workshop">
+            <button type="submit">升级加工坊</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>订单面板</h2>
+          <ul class="status-list compact">
+            {% for order in orders %}<li>{{ order }}</li>{% endfor %}
+          </ul>
+          <form class="stack-form" method="post" action="{{ url_for('action') }}">
+            <input type="hidden" name="action" value="fulfill_order">
+            <label>交付订单编号<input name="order_id" type="text" placeholder="例如 fresh_bundle"></label>
+            <button type="submit">交付订单</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>人物互动</h2>
+          <ul class="status-list compact">{% for character in characters %}<li>{{ character }}</li>{% endfor %}</ul>
+          <form class="stack-form" method="post" action="{{ url_for('action') }}">
+            <input type="hidden" name="action" value="interact">
+            <label>角色
+              <select name="character_id">{% for character_id, definition in character_defs.items() %}<option value="{{ character_id }}">{{ definition.name }} / {{ definition.role }}</option>{% endfor %}</select>
+            </label>
+            <button type="submit">互动</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>系统技能</h2>
+          <div class="status-list compact">
+            {% for skill_id, skill in skills.items() %}
+            <form class="inline-form" method="post" action="{{ url_for('action') }}">
+              <input type="hidden" name="action" value="unlock_skill"><input type="hidden" name="skill_id" value="{{ skill_id }}">
+              <div><strong>{{ skill.name }}</strong><p>{{ skill.description }}</p></div>
+              <button {% if skill_id in unlocked_skills %}disabled{% endif %} type="submit">{% if skill_id in unlocked_skills %}已解锁{% else %}消耗 {{ skill.energy_cost }}{% endif %}</button>
+            </form>
+            {% endfor %}
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>公司治理</h2>
+          <ul class="status-list compact">{% for row in company %}<li>{{ row }}</li>{% endfor %}</ul>
+          <div class="button-row">
+            <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="action" value="prepare_company"><button type="submit">成立公司</button></form>
+            <form method="post" action="{{ url_for('action') }}" class="mini-form"><input type="hidden" name="action" value="hire"><input name="count" type="number" min="1" value="1"><button type="submit">雇佣村民</button></form>
+            <form method="post" action="{{ url_for('action') }}"><input type="hidden" name="action" value="dividends"><button type="submit">发起分红</button></form>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>仓库</h2>
+          <ul class="status-list compact">{% for item in inventory %}<li>{{ item }}</li>{% endfor %}</ul>
+        </article>
+
+        <article class="card wide">
+          <h2>任务与事件日志</h2>
+          <div class="two-column">
+            <ul class="status-list compact">{% for task in tasks %}<li>{{ task }}</li>{% endfor %}</ul>
+            <ul class="status-list compact journal">{% for log in logs %}<li>{{ log }}</li>{% endfor %}</ul>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <dialog id="story-modal" class="story-modal">
+      <h3>剧情弹窗</h3>
+      <ul>
+        {% for line in story_lines %}
+        <li>{{ line }}</li>
+        {% endfor %}
+      </ul>
+      <button type="button" onclick="document.getElementById('story-modal').close()">关闭</button>
+    </dialog>
+  </body>
+</html>
