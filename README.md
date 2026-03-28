@@ -96,6 +96,45 @@ build_dist.bat --from-current-dist --sync-from-project
 - `assets/app.js`：静态 UI 控制器、存档、页面渲染与中转接口调用
 - `README-upload.md`：上传和部署说明
 
+## Git 常用流程（Windows）
+
+首次克隆后设置身份（仅需一次）：
+
+```bash
+git config --global user.name "你的GitHub用户名"
+git config --global user.email "你的GitHub邮箱"
+```
+
+日常提交与推送：
+
+```bash
+git status
+git add .
+git commit -m "feat: 你的变更说明"
+git push
+```
+
+开发前先拉取远端更新：
+
+```bash
+git pull --rebase
+```
+
+查看最近提交：
+
+```bash
+git log --oneline -n 10
+```
+
+如果误提交了不该跟踪的文件（先改 `.gitignore`）：
+
+```bash
+git rm -r --cached .
+git add .
+git commit -m "chore: refresh tracked files by gitignore"
+git push
+```
+
 ## 项目结构
 
 ```text
