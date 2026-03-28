@@ -543,9 +543,9 @@
         .filter((order) => !order.completed)
         .map((order) => {
           const required = Object.keys(order.required_items)
-            .map((itemId) => `${ITEMS[itemId] ? ITEMS[itemId].name : itemId}x${order.required_items[itemId]}`)
+            .map((itemId) => `${ITEMS[itemId] ? ITEMS[itemId].name : itemId} × ${order.required_items[itemId]}`)
             .join("、");
-          return `${order.order_id} | ${order.title} | 需求: ${required} | 奖励: ${order.reward_money}元/${order.reward_particles}微粒`;
+          return `${order.title} | 需求: ${required} | 奖励: ${order.reward_money} 元 / ${order.reward_particles} 微粒`;
         });
       return lines.length ? lines : ["暂无可执行订单。"];
     }

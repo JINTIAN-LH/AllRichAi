@@ -169,6 +169,10 @@ button {
   box-shadow: var(--shadow);
 }
 
+.flash[hidden] {
+  display: none;
+}
+
 .flash-close,
 .modal-close,
 .drawer-close,
@@ -538,11 +542,33 @@ input,
 select,
 textarea {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: 1px solid rgba(35, 31, 26, 0.22);
   border-radius: 12px;
   padding: 10px 12px;
   color: var(--ink);
   background: #fffefb;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.stack-form,
+.bridge-settings,
+label {
+  min-width: 0;
+}
+
+#bridge-endpoint,
+#bridge-api-key,
+#bridge-api-key-header,
+#bridge-model,
+#bridge-client-id,
+#bridge-sign-version {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 label {

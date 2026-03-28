@@ -18,6 +18,7 @@
   let bridgeConfig = loadBridgeConfig();
   let activePage = "home";
   let profilePromptShown = false;
+  let flashMuted = false;
 
   if (engine.state.open_mode.profile_saved && !engine.state.open_mode.last_options.length) {
     engine.openModeOptions(getSceneForTurn(), DEFAULT_GOAL);
@@ -31,6 +32,8 @@
     return {
       enabled: false,
       endpoint: "",
+      apiKey: "",
+      apiKeyHeader: "Authorization",
       model: "",
       timeoutMs: 15000,
       signEnabled: false,
@@ -47,6 +50,8 @@
       return {
         enabled: !!parsed.enabled,
         endpoint: String(parsed.endpoint || "").trim(),
+        apiKey: String(parsed.apiKey || "").trim(),
+        apiKeyHeader: String(parsed.apiKeyHeader || "Authorization").trim() || "Authorization",
         model: String(parsed.model || "").trim(),
         timeoutMs: clamp(Number(parsed.timeoutMs || 15000), 3000, 60000),
         signEnabled: !!parsed.signEnabled,
@@ -62,6 +67,8 @@
     bridgeConfig = {
       enabled: !!nextConfig.enabled,
       endpoint: String(nextConfig.endpoint || "").trim(),
+      apiKey: String(nextConfig.apiKey || "").trim(),
+      apiKeyHeader: String(nextConfig.apiKeyHeader || "Authorization").trim() || "Authorization",
       model: String(nextConfig.model || "").trim(),
       timeoutMs: clamp(Number(nextConfig.timeoutMs || 15000), 3000, 60000),
       signEnabled: !!nextConfig.signEnabled,
@@ -132,6 +139,17 @@
     };
   }
 
+  function applyBridgeAuthHeader(headers) {
+    const key = String(bridgeConfig.apiKey || "").trim();
+    const headerName = String(bridgeConfig.apiKeyHeader || "Authorization").trim() || "Authorization";
+    if (!key) return;
+    if (headerName.toLowerCase() === "authorization") {
+      headers.Authorization = /^bearer\s+/i.test(key) ? key : `Bearer ${key}`;
+      return;
+    }
+    headers[headerName] = key;
+  }
+
   function showLoading(show) {
     const mask = document.getElementById("loading-mask");
     if (!mask) return;
@@ -160,6 +178,7 @@
   }
 
   function showFlash(message) {
+    if (flashMuted) return;
     const flash = document.getElementById("flash");
     const text = document.getElementById("flash-text");
     if (!flash || !text) return;
@@ -183,7 +202,7 @@
     const message = action();
     const after = snapshotForDiff();
     const changes = diffSnapshots(before, after);
-    persistState(message);
+    persistState();
     if (activePage === "story" && changes.length) {
       displayResult(message, changes);
     }
@@ -246,22 +265,26 @@
   function renderBridgeSettings() {
     const enabled = document.getElementById("bridge-enabled");
     const endpoint = document.getElementById("bridge-endpoint");
+    const apiKey = document.getElementById("bridge-api-key");
+    const apiKeyHeader = document.getElementById("bridge-api-key-header");
     const model = document.getElementById("bridge-model");
     const timeout = document.getElementById("bridge-timeout");
     const signEnabled = document.getElementById("bridge-sign-enabled");
     const clientId = document.getElementById("bridge-client-id");
     const signVersion = document.getElementById("bridge-sign-version");
     const status = document.getElementById("bridge-status");
-    if (!enabled || !endpoint || !model || !timeout || !signEnabled || !clientId || !signVersion || !status) return;
+    if (!enabled || !endpoint || !apiKey || !apiKeyHeader || !model || !timeout || !signEnabled || !clientId || !signVersion || !status) return;
     enabled.checked = !!bridgeConfig.enabled;
     endpoint.value = bridgeConfig.endpoint || "";
+    apiKey.value = bridgeConfig.apiKey || "";
+    apiKeyHeader.value = bridgeConfig.apiKeyHeader || "Authorization";
     model.value = bridgeConfig.model || "";
     timeout.value = String(bridgeConfig.timeoutMs || 15000);
     signEnabled.checked = !!bridgeConfig.signEnabled;
     clientId.value = bridgeConfig.clientId || "";
     signVersion.value = bridgeConfig.signVersion || "v1";
     status.textContent = bridgeConfig.enabled && bridgeConfig.endpoint
-      ? `当前模式：中转接口（${bridgeConfig.endpoint}）`
+        ? `当前模式：中转接口（${bridgeConfig.endpoint}）${bridgeConfig.apiKey ? "，含密钥" : ""}`
       : "当前模式：规则文本兜底";
   }
 
@@ -487,7 +510,14 @@
     const form = document.getElementById("farm-form");
     if (list) list.innerHTML = engine.plotReport().map((item) => `<li>${item}</li>`).join("");
     if (form) {
-      form.plotId.max = String(engine.state.plots.length);
+      populateSelect(form.plotId, engine.state.plots.map((plot) => ({ value: String(plot.plot_id) })), (item) => {
+        const plotId = Number(item.value);
+        const plot = engine.state.plots.find((p) => p.plot_id === plotId);
+        if (!plot || !plot.crop_id) return `地块 ${plotId}（空闲）`;
+        const crop = gameData.CROPS[plot.crop_id];
+        const suffix = plot.ready_to_harvest ? "可收获" : `${plot.days_remaining} 天后成熟`;
+        return `地块 ${plotId}（${crop.name}，${suffix}）`;
+      });
       populateSelect(form.cropId, Object.keys(engine.availableCrops()).map((cropId) => ({ value: cropId })), (item) => {
         const crop = gameData.CROPS[item.value];
         return `${crop.name} / 成本 ${crop.seed_cost}`;
@@ -500,7 +530,14 @@
     const form = document.getElementById("ranch-form");
     if (list) list.innerHTML = engine.penReport().map((item) => `<li>${item}</li>`).join("");
     if (form) {
-      form.penId.max = String(engine.state.pens.length);
+      populateSelect(form.penId, engine.state.pens.map((pen) => ({ value: String(pen.pen_id) })), (item) => {
+        const penId = Number(item.value);
+        const pen = engine.state.pens.find((p) => p.pen_id === penId);
+        if (!pen || !pen.livestock_id) return `棚舍 ${penId}（空闲）`;
+        const livestock = gameData.LIVESTOCKS[pen.livestock_id];
+        const suffix = pen.ready_to_collect ? "可收取" : `${pen.days_remaining} 天后产出`;
+        return `棚舍 ${penId}（${livestock.name}，${suffix}）`;
+      });
       populateSelect(form.livestockId, Object.keys(engine.availableLivestock()).map((livestockId) => ({ value: livestockId })), (item) => {
         const livestock = gameData.LIVESTOCKS[item.value];
         return `${livestock.name} / 成本 ${livestock.buy_cost}`;
@@ -520,8 +557,20 @@
 
   function renderOrderModal() {
     const list = document.getElementById("order-list");
+    const form = document.getElementById("order-form");
     if (list) {
       list.innerHTML = engine.orderReport().map((item) => `<li>${item}</li>`).join("");
+    }
+    if (form) {
+      const orderItems = engine.state.active_orders
+        .filter((order) => !order.completed)
+        .map((order) => ({ value: order.order_id, title: order.title }));
+      populateSelect(form.orderId, orderItems, (item) => {
+        const target = engine.state.active_orders.find((order) => order.order_id === item.value);
+        if (!target) return item.title || item.value;
+        return `${target.title}（奖励 ${target.reward_money}元 / ${target.reward_particles}微粒）`;
+      });
+      form.querySelector("button[type='submit']").disabled = !orderItems.length;
     }
   }
 
@@ -549,18 +598,29 @@
 
   function renderSkillsModal() {
     const skillEntries = engine.availableSkills();
+    const stageLabel = { startup: "躺平起步", scale_up: "产业升级", common_prosperity: "共同富裕" };
+    const stageReached = (requiredStage) => {
+      const rank = { startup: 0, scale_up: 1, common_prosperity: 2 };
+      return (rank[engine.state.stage] || 0) >= (rank[requiredStage] || 0);
+    };
     setHtml("skill-list", skillEntries.map((entry) => {
       const skill = entry.definition;
-      const stateText = entry.unlocked ? "已解锁" : `消耗 ${skill.energy_cost}`;
+      const stageOk = stageReached(skill.required_stage);
+      const energyOk = Number(engine.state.resources.source_energy || 0) >= Number(skill.energy_cost || 0);
+      const stateText = entry.unlocked
+        ? "已解锁"
+        : `解锁条件：阶段≥${stageLabel[skill.required_stage] || skill.required_stage}，生命源能≥${skill.energy_cost}${stageOk && energyOk ? "（已满足）" : "（未满足）"}`;
       return `<li><strong>${skill.name}</strong><span class="state-tag">${stateText}</span><p>${skill.description}</p></li>`;
     }).join(""));
     const actions = document.getElementById("skill-actions");
     if (!actions) return;
     actions.innerHTML = "";
     skillEntries.filter((entry) => !entry.unlocked).forEach((entry) => {
+      const canUnlock = stageReached(entry.definition.required_stage) && Number(engine.state.resources.source_energy || 0) >= Number(entry.definition.energy_cost || 0);
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = `解锁：${entry.definition.name}`;
+      button.textContent = canUnlock ? `解锁：${entry.definition.name}` : `未满足：${entry.definition.name}`;
+      button.disabled = !canUnlock;
       button.addEventListener("click", () => withEngine(() => engine.unlockSkill(entry.skill_id)));
       actions.appendChild(button);
     });
@@ -714,6 +774,7 @@
     const timeoutId = window.setTimeout(() => controller.abort(), bridgeConfig.timeoutMs);
     try {
       const headers = { "Content-Type": "application/json" };
+      applyBridgeAuthHeader(headers);
       if (securityMeta) {
         headers["X-TF-Timestamp"] = String(securityMeta.timestamp);
         headers["X-TF-Nonce"] = securityMeta.nonce;
@@ -822,6 +883,7 @@
   function bindEvents() {
     document.getElementById("flash-close").addEventListener("click", () => {
       document.getElementById("flash").hidden = true;
+      flashMuted = true;
     });
 
     document.querySelectorAll(".bottom-nav button[data-page]").forEach((button) => {
@@ -896,8 +958,7 @@
     document.getElementById("order-form").addEventListener("submit", (event) => {
       event.preventDefault();
       const form = event.currentTarget;
-      withEngine(() => engine.fulfillOrder(form.orderTitle.value || ""));
-      form.orderTitle.value = "";
+      withEngine(() => engine.fulfillOrder(form.orderId.value || ""));
     });
 
     document.querySelectorAll("[data-company]").forEach((button) => {
@@ -949,6 +1010,8 @@
       saveBridgeConfig({
         enabled: document.getElementById("bridge-enabled").checked,
         endpoint: document.getElementById("bridge-endpoint").value,
+        apiKey: document.getElementById("bridge-api-key").value,
+        apiKeyHeader: document.getElementById("bridge-api-key-header").value,
         model: document.getElementById("bridge-model").value,
         timeoutMs: Number(document.getElementById("bridge-timeout").value || 15000),
         signEnabled: document.getElementById("bridge-sign-enabled").checked,
@@ -971,6 +1034,7 @@
       try {
         const securityMeta = buildSecurityMeta();
         const headers = { "Content-Type": "application/json" };
+        applyBridgeAuthHeader(headers);
         if (securityMeta) {
           headers["X-TF-Timestamp"] = String(securityMeta.timestamp);
           headers["X-TF-Nonce"] = securityMeta.nonce;
