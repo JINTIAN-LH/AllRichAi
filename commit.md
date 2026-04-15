@@ -1,3 +1,26 @@
+## Commit #5: 自检打包构建提交流程 Skill + 全链路执行 ✅
+**日期**: 2026-04-15
+**作者**: GitHub Copilot
+**类型**: Skill + Build + Integration
+
+### 工作内容
+新增可复用 Copilot Skill，用于一键执行“自检 -> 打包构建 -> 更新提交记录 -> 提交推送”流程；并在当前仓库按该流程完整执行一轮。
+
+### 关键改动
+- 新增 Skill: `.github/skills/selfcheck-package-build-commit-push/SKILL.md`。
+- 执行自检：
+   - `python -m unittest discover -s tests`
+   - `python -m farmgame --audit`
+- 执行构建打包：`build_dist.bat --sync-from-project`。
+- 按你的选择，提交中包含仓库已有在途改动（`release_src/assets/app.js`）及构建同步产物。
+
+### 验证结果
+- 单元测试：`python -m unittest discover -s tests` -> **21/21 通过**
+- 设计审计：`python -m farmgame --audit` -> **执行成功**
+- 打包构建：`build_dist.bat --sync-from-project` -> **成功**
+
+---
+
 ## Commit #4: 第二轮界面交互内测 + 构建发布验证 ✅
 **日期**: 2026-04-15
 **作者**: GitHub Copilot

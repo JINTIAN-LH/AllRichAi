@@ -108,7 +108,7 @@ build_dist.bat --from-current-dist --sync-from-project
 
 关键配置：
 - Build：`pip install -r requirements.txt`
-- Start：`python run_web.py`
+- Start：`gunicorn --workers=2 --threads=4 --timeout=120 --bind=0.0.0.0:$PORT run_web:app`
 - Health Check：`/`
 
 端口优先级（`run_web.py`）：
@@ -121,6 +121,9 @@ build_dist.bat --from-current-dist --sync-from-project
 - `LLM_API_KEY`
 - `ALLRICHAI_LLM_ENDPOINT`（可选）
 - `ALLRICHAI_LLM_TIMEOUT`（可选）
+- `ALLRICHAI_ALLOWED_ORIGINS`（例如 `https://your-app.funloom.com`，多域名用逗号分隔）
+- `ALLRICHAI_SAVE_ROOT`（建议持久化目录，例如 `/var/data/allrichai/saves`）
+- `ALLRICHAI_RATE_LIMIT_ENABLED`（默认 `1`）
 
 ### funloom.ai 前端
 

@@ -1,17 +1,17 @@
 {
-  "turn": 6,
-  "time": "夜晚",
+  "turn": 1,
+  "time": "清晨",
   "season": "初夏",
-  "weather": "大雨",
+  "weather": "晴朗",
   "stage": "startup",
   "resources": {
-    "money": 4620,
-    "particles": 130,
-    "source_energy": 2,
-    "prosperity": 5,
-    "laziness": 47,
+    "money": 2000,
+    "particles": 30,
+    "source_energy": 0,
+    "prosperity": 0,
+    "laziness": 50,
     "villager_support": 10,
-    "family_harmony": 83,
+    "family_harmony": 80,
     "land": 0.5
   },
   "system": {
@@ -41,10 +41,7 @@
       "ready_to_collect": false
     }
   ],
-  "inventory": {
-    "vegetable": 6,
-    "egg": 8
-  },
+  "inventory": {},
   "characters": {
     "liu_huaizhi": {
       "favor": 0,
@@ -139,10 +136,10 @@
     "villagers_hired": 0,
     "dividend_rounds": 0,
     "livestock_collections": 0,
-    "orders_completed": 1,
+    "orders_completed": 0,
     "ranch_expansions": 0,
     "workshop_upgrades": 0,
-    "days_played": 6,
+    "days_played": 1,
     "current_turn_planted": 0,
     "current_turn_interactions": 0,
     "current_turn_streamed": 0,
@@ -158,13 +155,13 @@
     "wage_per_employee": 90,
     "workshop_level": 1,
     "ranch_capacity": 1,
-    "employee_morale": 62,
-    "profit_pool": 770,
+    "employee_morale": 60,
+    "profit_pool": 0,
     "processing_fee_multiplier": 1.0,
-    "processing_output_multiplier": 1.2,
-    "order_reward_multiplier": 1.1,
+    "processing_output_multiplier": 1.1,
+    "order_reward_multiplier": 1.0,
     "support_score": 10,
-    "brand_score": 1
+    "brand_score": 0
   },
   "player_profile": {
     "name": "刘洋",
@@ -177,8 +174,8 @@
     "last_scene": "",
     "last_goal": "",
     "last_options": [],
-    "last_play_result": "请先完成主角设定。",
-    "last_stat_delta": "数值无变化"
+    "last_play_result": "",
+    "last_stat_delta": ""
   },
   "partnerships": {
     "science_progress": 0,
@@ -201,33 +198,16 @@
       "reward_money": 2200,
       "reward_prosperity": 2,
       "reward_particles": 300,
-      "completed": true
-    },
-    {
-      "order_id": "fresh_bundle",
-      "title": "城郊生鲜店补货",
-      "required_items": {
-        "vegetable": 4,
-        "egg": 2
-      },
-      "reward_money": 2200,
-      "reward_prosperity": 2,
-      "reward_particles": 300,
       "completed": false
     }
   ],
-  "event_text": "大雨的夜晚，王楠发来语音，说短视频素材已经剪好。",
+  "event_text": "你刚回到老家，考研失败，身心俱疲，躺平智辅系统突然激活。",
   "flags": [],
   "log": [
-    "模拟器行动：农业行动：查看自家田地",
-    "刘洋在“刘家村，第 3 天，清晨”执行了“农业行动：查看自家田地”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村里对你的信任明显提高，后续合作也更顺畅。本次行动即时结算：资金 +140，微粒 +100，共富 +1，躺平值 -1。",
-    "新的一天开始了，系统完成日常结算。",
-    "→ 农业行动：查看自家田地",
-    "✓ 刘洋在“刘家村，第 3 天，清晨”执行了“农业行动：查看自家田地”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村里...",
-    "新的一天开始了，系统完成日常结算。",
-    "模拟器行动：剧情推进：先查看农场当前状况，再决定今天行动",
-    "刘洋在“刘家村，第 5 天，剧情节点 v1c1”执行了“剧情推进：先查看农场当前状况，再决定今天行动”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村里对你的信任明显提高，后续合作也更顺畅。本次行动即时结算：资金 +140，微粒 +100，共富 +1，躺平值 -1。",
-    "新的一天开始了，系统完成日常结算。",
-    "[剧情] v1c1 -> 先查看农场当前状况，再决定今天行动"
+    "考研三战失利后，刘洋回到了刘家村。",
+    "躺平智辅系统在强烈的回乡意愿下激活。",
+    "你要在个人躺平和带动全村增收之间找到平衡。",
+    "新订单到达：城郊生鲜店补货。",
+    "已应用经营平衡参数。"
   ]
 }

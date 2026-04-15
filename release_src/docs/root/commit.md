@@ -1,3 +1,51 @@
+## Commit #5: 自检打包构建提交流程 Skill + 全链路执行 ✅
+**日期**: 2026-04-15
+**作者**: GitHub Copilot
+**类型**: Skill + Build + Integration
+
+### 工作内容
+新增可复用 Copilot Skill，用于一键执行“自检 -> 打包构建 -> 更新提交记录 -> 提交推送”流程；并在当前仓库按该流程完整执行一轮。
+
+### 关键改动
+- 新增 Skill: `.github/skills/selfcheck-package-build-commit-push/SKILL.md`。
+- 执行自检：
+   - `python -m unittest discover -s tests`
+   - `python -m farmgame --audit`
+- 执行构建打包：`build_dist.bat --sync-from-project`。
+- 按你的选择，提交中包含仓库已有在途改动（`release_src/assets/app.js`）及构建同步产物。
+
+### 验证结果
+- 单元测试：`python -m unittest discover -s tests` -> **21/21 通过**
+- 设计审计：`python -m farmgame --audit` -> **执行成功**
+- 打包构建：`build_dist.bat --sync-from-project` -> **成功**
+
+---
+
+## Commit #4: 第二轮界面交互内测 + 构建发布验证 ✅
+**日期**: 2026-04-15
+**作者**: GitHub Copilot
+**类型**: Test + Build + Integration
+
+### 工作内容
+完成第二轮“各界面内人机交互逻辑”内测，补充跨页面与跨 API 的交互回归测试；执行一轮完整构建（含同步到 release_src 和 dist 打包），为提交推送做发布前校验。
+
+### 关键改动
+- 新增 Web 交互测试覆盖：
+   - `/action` 在 `next=story|balance` 时的重定向行为
+   - `/api/story/execute-command` 的空输入校验和固定指令映射
+   - `/api/viz/state`、`/api/viz/action` 成功与失败路径
+   - `/api/viz/open/suggest`、`/api/viz/open/play`、`/api/viz/story/dialog`、`/api/viz/story/choice`
+   - `/api/viz/slot/save|load|delete` 存档槽位交互链路
+- 优化订单交付输入鲁棒性（支持编号、标题、复制整行文本解析）并补回归测试。
+- 执行构建同步：`build_dist.bat --sync-from-project`，同步 `docs`、`static`、`viz`、`saves` 导出到 `release_src`，并生成 `dist` 与上传包。
+
+### 验证结果
+- 单元测试：`python -m unittest discover -s tests` -> **20/20 通过**
+- 路由冒烟：主页/剧情面板/可视化页面与关键 API 返回正常（含空指令 400 校验）
+- 构建验证：`build_dist.bat --sync-from-project` -> **成功**
+
+---
+
 ## Commit #3: 开心农场可视化增量融合 - P2/P3/P4 执行完成 ✅
 **日期**: 2026-03-28
 **作者**: GitHub Copilot

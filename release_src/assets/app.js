@@ -2,6 +2,7 @@
   const STORAGE_KEY = "tf_static_state_v2";
   const LEGACY_STORAGE_KEY = "tf_static_state_v1";
   const BACKEND_KEY = "tf_backend_config_v1";
+  const DEFAULT_BACKEND_BASE_URL = "https://allrichai.onrender.com";
   const BRIDGE_KEY = "tf_static_bridge_v1";
   const BRIDGE_SLOT_KEY = "tf_static_bridge_slot_v1";
   const DEFAULT_GOAL = "低压力推进经营并保持家庭关系稳定";
@@ -56,7 +57,7 @@
 
   function defaultBackendConfig() {
     return {
-      baseUrl: ""
+      baseUrl: DEFAULT_BACKEND_BASE_URL
     };
   }
 
@@ -65,8 +66,9 @@
       const raw = localStorage.getItem(BACKEND_KEY);
       if (!raw) return defaultBackendConfig();
       const parsed = JSON.parse(raw);
+      const normalizedBaseUrl = String(parsed.baseUrl || "").trim().replace(/\/+$/, "");
       return {
-        baseUrl: String(parsed.baseUrl || "").trim().replace(/\/+$/, "")
+        baseUrl: normalizedBaseUrl || DEFAULT_BACKEND_BASE_URL
       };
     } catch (_) {
       return defaultBackendConfig();
