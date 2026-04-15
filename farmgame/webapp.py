@@ -39,6 +39,7 @@ def create_app() -> Flask:
     _ensure_save_dirs()
 
     allowed_origins = _load_allowed_origins()
+    allowed_origin_patterns = _compile_allowed_origin_patterns(allowed_origins)
     CORS(
         app,
         resources={r"/api/*": {"origins": allowed_origins}},
@@ -54,6 +55,30 @@ def create_app() -> Flask:
         ],
         max_age=3600,
     )
+
+    @app.after_request
+    def ensure_api_cors_headers(response):
+        if not request.path.startswith("/api/"):
+            return response
+
+        request_origin = str(request.headers.get("Origin", "")).strip()
+        if not _is_origin_allowed(request_origin, allowed_origins, allowed_origin_patterns):
+            return response
+
+        response.headers["Access-Control-Allow-Origin"] = request_origin
+        response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
+        response.headers[
+            "Access-Control-Allow-Headers"
+        ] = "Content-Type,Authorization,X-TF-Timestamp,X-TF-Nonce,X-TF-Signature,X-TF-Client-Id,X-TF-Sign-Version"
+        response.headers["Access-Control-Max-Age"] = "3600"
+
+        vary_value = response.headers.get("Vary", "")
+        vary_parts = [part.strip() for part in vary_value.split(",") if part.strip()]
+        if "Origin" not in vary_parts:
+            vary_parts.append("Origin")
+            response.headers["Vary"] = ", ".join(vary_parts)
+
+        return response
 
     limiter = Limiter(
         key_func=get_remote_address,
@@ -704,6 +729,35 @@ def _load_allowed_origins() -> str | list[str]:
 
     deduped = list(dict.fromkeys(normalized))
     return deduped or "*"
+
+
+def _compile_allowed_origin_patterns(allowed_origins: str | list[str]) -> list[re.Pattern[str]]:
+    if allowed_origins == "*":
+        return []
+
+    patterns: list[re.Pattern[str]] = []
+    for origin in allowed_origins:
+        if origin.startswith("http://") or origin.startswith("https://"):
+            continue
+        try:
+            patterns.append(re.compile(rf"^{origin}$", re.IGNORECASE))
+        except re.error:
+            continue
+    return patterns
+
+
+def _is_origin_allowed(
+    request_origin: str,
+    allowed_origins: str | list[str],
+    patterns: list[re.Pattern[str]],
+) -> bool:
+    if not request_origin:
+        return False
+    if allowed_origins == "*":
+        return True
+    if request_origin in allowed_origins:
+        return True
+    return any(pattern.match(request_origin) for pattern in patterns)
 
 
 def _ensure_save_dirs() -> None:

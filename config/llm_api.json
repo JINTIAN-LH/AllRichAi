@@ -1,8 +1,13 @@
 {
   "LLM_API_KEY": "sk-2498b2c4f938478aa2404aee669d020f",
   "LLM_API_BASE": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-  "LLM_MODEL": "qwen3-max",
-  "LLM_CHAT_MODEL": "qwen3-max",
+  "LLM_MODEL": "qwen-plus",
+  "LLM_CHAT_MODEL": "qwen-plus",
   "PORT": 3002,
-  "timeout_seconds": 10
+  "timeout_seconds": 10,
+  "api_key": "sk-2498b2c4f938478aa2404aee669d020f",
+  "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+  "model": "qwen-plus",
+  "chat_model": "qwen-plus"
 }

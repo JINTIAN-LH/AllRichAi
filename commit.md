@@ -26,6 +26,27 @@
 
 ---
 
+## Commit #7: 打包构建提交流程执行（2026-04-16）✅
+**日期**: 2026-04-16
+**作者**: GitHub Copilot
+**类型**: Build + Verification + Release
+
+### 工作内容
+执行“打包构建 -> 更新提交记录 -> 提交上传”流程，完成当前工作区在途改动的一次统一提交与远端同步。
+
+### 关键改动
+- 构建命令调整为当前脚本可用方式：`build_dist.bat`
+- 产物生成：`dist/` 与 `dist-static-upload.zip`
+- 本次纳入提交的改动：
+   - 修改：`build_dist.py`、`config/llm_api.json`、`docs/deploy-render-funloom.md`、`farmgame/static/viz/js/engineBridge.js`、`farmgame/static/viz/js/stateSync.js`、`farmgame/webapp.py`、`render.yaml`
+   - 新增：`_cors_headers_probe.py`、`tools/`
+
+### 验证结果
+- 打包构建：`build_dist.bat` -> **成功**
+- 产物校验：`dist/index.html` 与 `dist-static-upload.zip` 均存在
+
+---
+
 ## Commit #6: 自检打包提交流程执行（含现有改动）✅
 **日期**: 2026-04-15
 **作者**: GitHub Copilot

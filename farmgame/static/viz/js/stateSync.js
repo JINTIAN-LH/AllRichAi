@@ -4,6 +4,9 @@
 const StateSync = {
   // 当前游戏状态
   currentState: null,
+
+  // 连续失败次数（用于触发玩家可见的连接提示）
+  consecutiveFailures: 0,
   
   // 状态更新回调函数列表
   stateUpdateCallbacks: [],
@@ -55,9 +58,124 @@ const StateSync = {
         // 通知所有订阅者状态已更新
         this.notifyStateUpdate(newState, oldState);
       }
+
+      this.consecutiveFailures = 0;
+      this.hideConnectionHelper();
     } catch (error) {
+      this.consecutiveFailures += 1;
+      this.showConnectionHelper(error);
       console.error('同步状态失败:', error);
     }
+  },
+
+  ensureConnectionHelper() {
+    if (this.connectionHelperEl) {
+      return this.connectionHelperEl;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'viz-connection-helper';
+    wrapper.style.cssText = [
+      'display:none',
+      'position:fixed',
+      'left:12px',
+      'right:12px',
+      'bottom:64px',
+      'z-index:2200',
+      'background:#fff7ed',
+      'border:1px solid #fdba74',
+      'border-radius:10px',
+      'box-shadow:0 6px 20px rgba(0,0,0,.12)',
+      'padding:10px 12px',
+      'font-size:13px',
+      'line-height:1.5',
+      'color:#7c2d12',
+    ].join(';');
+
+    const showDebugTools = Boolean(
+      typeof EngineBridge !== 'undefined' &&
+      typeof EngineBridge.isDebugApiConfigEnabled === 'function' &&
+      EngineBridge.isDebugApiConfigEnabled()
+    );
+
+    wrapper.innerHTML = `
+      <div style="font-weight:700;margin-bottom:6px;">网络连接异常</div>
+      <div id="viz-connection-helper-detail" style="margin-bottom:8px;">正在尝试重新连接服务器，请稍后重试。</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="viz-retry-sync" type="button" style="border:none;background:#ea580c;color:#fff;padding:7px 12px;border-radius:6px;cursor:pointer;">立即重试</button>
+        <button id="viz-close-helper" type="button" style="border:1px solid #fdba74;background:#fff;color:#9a3412;padding:7px 10px;border-radius:6px;cursor:pointer;">先继续离线浏览</button>
+      </div>
+      <div style="margin-top:8px;color:#9a3412;">如持续失败，请稍后刷新页面。</div>
+      ${showDebugTools ? `
+      <details style="margin-top:8px;">
+        <summary style="cursor:pointer;color:#9a3412;">调试: API 地址配置</summary>
+        <label for="viz-api-base-input" style="display:block;margin:6px 0 4px;color:#9a3412;">后端 API 地址（可填域名或完整 /api/viz）</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="viz-api-base-input" type="text" placeholder="例如: https://your-backend.example.com" style="flex:1;min-width:0;border:1px solid #fb923c;border-radius:6px;padding:7px 8px;" />
+          <button id="viz-api-base-save" type="button" style="border:none;background:#b45309;color:#fff;padding:7px 10px;border-radius:6px;cursor:pointer;">保存地址</button>
+        </div>
+      </details>` : ''}
+    `;
+
+    document.body.appendChild(wrapper);
+
+    const retryBtn = wrapper.querySelector('#viz-retry-sync');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => {
+        this.syncState();
+      });
+    }
+
+    const closeBtn = wrapper.querySelector('#viz-close-helper');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        this.hideConnectionHelper();
+      });
+    }
+
+    const saveBtn = wrapper.querySelector('#viz-api-base-save');
+    const input = wrapper.querySelector('#viz-api-base-input');
+    if (saveBtn && input) {
+      saveBtn.addEventListener('click', () => {
+        const value = String(input.value || '').trim();
+        EngineBridge.setConfiguredBaseUrl(value, true);
+        this.consecutiveFailures = 0;
+        this.syncState();
+      });
+    }
+
+    this.connectionHelperEl = wrapper;
+    return wrapper;
+  },
+
+  showConnectionHelper(error) {
+    if (this.consecutiveFailures < 2) {
+      return;
+    }
+
+    const helper = this.ensureConnectionHelper();
+    const detail = helper.querySelector('#viz-connection-helper-detail');
+    const input = helper.querySelector('#viz-api-base-input');
+
+    if (detail) {
+      const errText = String(error && error.message ? error.message : error || '未知错误');
+      detail.textContent = `状态同步已连续失败 ${this.consecutiveFailures} 次：${errText}`;
+    }
+
+    if (input && !input.value) {
+      const configured = EngineBridge.getConfiguredBaseUrl();
+      const currentValue = configured || (typeof window !== 'undefined' ? window.location.origin : '');
+      input.value = currentValue;
+    }
+
+    helper.style.display = 'block';
+  },
+
+  hideConnectionHelper() {
+    if (!this.connectionHelperEl) {
+      return;
+    }
+    this.connectionHelperEl.style.display = 'none';
   },
   
   // 检查状态是否发生变化

@@ -27,6 +27,49 @@ Notes:
 - Keep secrets in Render dashboard, not in `config/llm_api.json` committed values.
 - API routes now include CORS + rate limiting middleware, so ensure the funloom origin is explicitly configured.
 
+### Render-Only Fast Recovery (No Custom Domain)
+
+If you only deploy backend on Render and do not use any CDN/custom domain, use the Render default hostname directly:
+
+1. Open Render dashboard and copy service URL, for example:
+	- `https://<your-service>.onrender.com`
+2. Verify backend directly (must all be 200):
+	- `https://<your-service>.onrender.com/`
+	- `https://<your-service>.onrender.com/viz`
+	- `https://<your-service>.onrender.com/api/viz/state`
+3. Set frontend API base to this Render URL (not your custom domain).
+4. Keep `ALLRICHAI_ALLOWED_ORIGINS` including your static frontend origin.
+
+If Render direct URL works but custom domain returns 404, the problem is domain DNS/routing, not app code.
+
+### Critical: Fix Cloudflare 404 On `api.kurangames.com`
+
+If online requests return `404 Not Found` with response header `server: cloudflare`, traffic is not reaching your Render app.
+
+Skip this section entirely if you are not using Cloudflare/custom domain.
+
+Apply this exact order:
+
+1. In Render service settings, add custom domain `api.kurangames.com` and wait until Render shows it as verified/issued TLS.
+2. In Cloudflare DNS, create (or update) CNAME:
+	- Name: `api`
+	- Target: your Render service host, e.g. `allrichai-farmgame-backend.onrender.com`
+	- Proxy status: first set to DNS only (gray cloud) for initial validation.
+3. Verify from browser or terminal:
+	- `https://api.kurangames.com/`
+	- `https://api.kurangames.com/viz`
+	- `https://api.kurangames.com/api/viz/state`
+	All should no longer be Cloudflare plain-text 404.
+4. Switch Cloudflare proxy back to Proxied (orange cloud) only after step 3 is green.
+5. If proxied mode fails:
+	- Cloudflare SSL/TLS mode should be `Full` (or `Full (strict)` after cert is valid).
+	- Disable/adjust WAF or Bot rules that block `/api/*` (errors like 1010/403).
+	- Ensure no Transform/Redirect rule rewrites `/api/viz/*`.
+
+Expected healthy signature:
+- `GET /api/viz/state` returns JSON with `ok=true` and `state` object.
+- Response headers include app-origin behavior (not Cloudflare empty plain-text 404).
+
 ## 2) Frontend On funloom.ai
 
 Build static package locally:
@@ -45,6 +88,24 @@ Then:
 - Frontend pages load from funloom.ai.
 - Frontend can call backend endpoint (no CORS/proxy mismatch).
 - Save/load still uses browser localStorage for static mode.
+
+### Quick Production Verification
+
+Run once after each deployment:
+
+```bash
+python tools/verify_online_endpoints.py --base-url https://api.kurangames.com --origin https://your-app.funloom.com
+```
+
+Render-only example:
+
+```bash
+python tools/verify_online_endpoints.py --base-url https://<your-service>.onrender.com --origin https://your-app.funloom.com
+```
+
+Pass condition:
+- `/`, `/viz`, `/story-panel`, `/balance`, `/api/viz/state` all return `200`.
+- CORS preflight for `/api/viz/state` returns `Access-Control-Allow-Origin` matching your frontend origin.
 
 ## 4) Structure Slimming Strategy (Non-breaking)
 

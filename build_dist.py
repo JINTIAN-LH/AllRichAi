@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import zipfile
 from pathlib import Path
@@ -49,8 +50,32 @@ def _reset_dir(path: Path) -> None:
 
 
 def _rewrite_viz_template_to_static(template_text: str) -> str:
-    # Keep page logic unchanged; only remap static resource URLs for standalone frontend hosting.
-    return template_text.replace('/static/viz/', './assets/viz/')
+    # Keep page logic unchanged; remap static resources and replace server-side template placeholders
+    # so the standalone package can run directly from static hosting.
+    rewritten = template_text.replace('/static/viz/', './assets/viz/')
+
+    # Replace Jinja url_for links with static-safe targets to prevent 404 on literal template strings.
+    rewritten = rewritten.replace("{{ url_for('index') }}", './index.html')
+    rewritten = rewritten.replace("{{ url_for('story_panel') }}", './index.html#story')
+    rewritten = rewritten.replace("{{ url_for('viz_index') }}", './index.html')
+    rewritten = rewritten.replace("{{ url_for('balance_page') }}", './index.html#profile')
+
+    # Replace status placeholders with deterministic defaults for first paint in static mode.
+    default_tokens = {
+        '{{ money }}': '0',
+        '{{ particles }}': '0',
+        '{{ land }}': '0',
+        '{{ turn }}': '1',
+        '{{ season }}': '春季',
+        '{{ weather }}': '晴朗',
+    }
+    for token, default_value in default_tokens.items():
+        rewritten = rewritten.replace(token, default_value)
+
+    # Remove any remaining Jinja template tokens that cannot be resolved in static hosting.
+    rewritten = re.sub(r"\{\{\s*[^{}]+\s*\}\}", '', rewritten)
+
+    return rewritten
 
 
 def _prepare_local_frontend_source() -> None:

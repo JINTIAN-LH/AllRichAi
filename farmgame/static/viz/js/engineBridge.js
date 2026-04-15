@@ -4,19 +4,151 @@
 const EngineBridge = {
   // API基础URL
   baseUrl: '/api/viz',
+  _resolvedBaseUrl: null,
+
+  normalizeBaseUrl(baseUrl) {
+    const raw = String(baseUrl || '').trim();
+    if (!raw) {
+      return '';
+    }
+
+    const trimmed = raw.replace(/\/+$/, '');
+    if (trimmed.endsWith('/api/viz')) {
+      return trimmed;
+    }
+
+    // Support configuring only backend origin, then append canonical API prefix.
+    return `${trimmed}/api/viz`;
+  },
+
+  resolveConfiguredBaseUrl() {
+    if (this._resolvedBaseUrl !== null) {
+      return this._resolvedBaseUrl;
+    }
+
+    let configured = '';
+
+    if (typeof window !== 'undefined') {
+      const globalBase = window.__FARMGAME_API_BASE__;
+      if (globalBase) {
+        configured = String(globalBase);
+      }
+
+      if (!configured && window.localStorage) {
+        const cached = window.localStorage.getItem('farmgame_api_base');
+        if (cached) {
+          configured = cached;
+        }
+      }
+
+      if (!configured) {
+        const query = new URLSearchParams(window.location.search);
+        const fromQuery = query.get('api_base');
+        if (fromQuery) {
+          configured = fromQuery;
+          if (window.localStorage) {
+            window.localStorage.setItem('farmgame_api_base', fromQuery);
+          }
+        }
+      }
+    }
+
+    this._resolvedBaseUrl = this.normalizeBaseUrl(configured);
+    return this._resolvedBaseUrl;
+  },
+
+  getConfiguredBaseUrl() {
+    return this.resolveConfiguredBaseUrl();
+  },
+
+  isDebugApiConfigEnabled() {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    try {
+      const query = new URLSearchParams(window.location.search);
+      if (query.get('debug_api') === '1') {
+        return true;
+      }
+    } catch (error) {
+      // Ignore malformed URL/search edge cases and treat as non-debug.
+    }
+
+    if (window.localStorage && window.localStorage.getItem('farmgame_debug_api') === '1') {
+      return true;
+    }
+
+    return Boolean(window.__FARMGAME_DEBUG_API__);
+  },
+
+  setConfiguredBaseUrl(baseUrl, persist = true) {
+    const normalized = this.normalizeBaseUrl(baseUrl);
+    this._resolvedBaseUrl = normalized;
+
+    if (persist && typeof window !== 'undefined' && window.localStorage) {
+      if (normalized) {
+        window.localStorage.setItem('farmgame_api_base', normalized);
+      } else {
+        window.localStorage.removeItem('farmgame_api_base');
+      }
+    }
+
+    return normalized;
+  },
+
+  getCandidateBaseUrls() {
+    const candidates = [];
+    const configured = this.resolveConfiguredBaseUrl();
+    if (configured) {
+      candidates.push(configured);
+    }
+    candidates.push(this.baseUrl);
+
+    return Array.from(new Set(candidates.map((item) => this.normalizeBaseUrl(item)).filter(Boolean)));
+  },
 
   async request(path, options = {}) {
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const requestOptions = {
       headers: {
         'Content-Type': 'application/json',
         ...(options.headers || {}),
       },
       ...options,
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    };
+    const requestMethod = String(requestOptions.method || 'GET').toUpperCase();
+    const candidates = this.getCandidateBaseUrls();
+
+    let lastError = null;
+    for (let i = 0; i < candidates.length; i += 1) {
+      const candidate = candidates[i];
+      const isLast = i === candidates.length - 1;
+      try {
+        const response = await fetch(`${candidate}${path}`, requestOptions);
+        if (!response.ok) {
+          // 404 usually indicates wrong API base in static deployments, try fallback candidates.
+          if (response.status === 404 && !isLast) {
+            continue;
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        if (this.baseUrl !== candidate) {
+          this.baseUrl = candidate;
+        }
+        return response.json();
+      } catch (error) {
+        lastError = error;
+        if (!isLast && requestMethod === 'GET') {
+          continue;
+        }
+        if (!isLast && String(error?.message || '').includes('HTTP error! status: 404')) {
+          continue;
+        }
+        throw error;
+      }
     }
-    return response.json();
+
+    throw lastError || new Error('Request failed');
   },
 
   normalizeResult(result) {
