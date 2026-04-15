@@ -1,3 +1,25 @@
+## Commit #6: 自检打包提交流程执行（含现有改动）✅
+**日期**: 2026-04-15
+**作者**: GitHub Copilot
+**类型**: Build + Verification + Release
+
+### 工作内容
+按仓库标准流程完成一轮“自检 -> 打包构建 -> 更新提交记录 -> 提交推送”，并将当前工作区既有改动纳入同次提交。
+
+### 关键改动
+- 执行自检：
+   - `python -m unittest discover -s tests`
+   - `python -m farmgame --audit`
+- 执行构建打包：`build_dist.bat --sync-from-project`
+- 本次提交文件：`farmgame/webapp.py`、`release_src/assets/static-viz.js`、`render.yaml`
+
+### 验证结果
+- 单元测试：`python -m unittest discover -s tests` -> **21/21 通过**
+- 设计审计：`python -m farmgame --audit` -> **执行成功**
+- 打包构建：`build_dist.bat --sync-from-project` -> **成功**
+
+---
+
 ## Commit #5: 自检打包构建提交流程 Skill + 全链路执行 ✅
 **日期**: 2026-04-15
 **作者**: GitHub Copilot

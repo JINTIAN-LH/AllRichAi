@@ -49,6 +49,10 @@
     const body = document.getElementById(targetId);
     if (!body) return;
     body.classList.toggle("is-open", open);
+    if (!uiState.drawerOpen || typeof uiState.drawerOpen !== 'object') {
+      uiState.drawerOpen = {};
+    }
+    uiState.drawerOpen[targetId] = !!open;
     const toggle = document.querySelector(`.viz-drawer-toggle[data-drawer-target="${targetId}"]`);
     if (toggle) {
       const label = toggle.querySelector('em');
@@ -434,12 +438,69 @@
   }
 
   // 渲染任务
+  function formatTaskRewards(rewards) {
+    if (!rewards || typeof rewards !== "object") return "无";
+    const rewardLabels = {
+      money: "资金",
+      particles: "微粒",
+      source_energy: "源能",
+      prosperity: "共富"
+    };
+    const parts = Object.keys(rewards)
+      .filter((key) => key !== "favor")
+      .map((key) => `${rewardLabels[key] || key} +${rewards[key]}`);
+    if (rewards.favor && typeof rewards.favor === "object") {
+      const favorTotal = Object.keys(rewards.favor).reduce((sum, id) => sum + Number(rewards.favor[id] || 0), 0);
+      if (favorTotal > 0) {
+        parts.push(`好感 +${favorTotal}`);
+      }
+    }
+    return parts.length ? parts.join(" / ") : "无";
+  }
+
+  function normalizeTasks(engine) {
+    const raw = engine && engine.state ? engine.state.tasks : null;
+    if (Array.isArray(raw)) {
+      return raw;
+    }
+    if (!raw || typeof raw !== "object") {
+      return [];
+    }
+    return Object.keys(raw).map((taskId) => {
+      const taskState = raw[taskId] || {};
+      const taskDef = (gameData.TASKS && gameData.TASKS[taskId]) || {};
+      const rawProgress = taskState.progress;
+      const progressCurrent = rawProgress && typeof rawProgress === "object"
+        ? Number(rawProgress.current || 0)
+        : Number(rawProgress || 0);
+      const progressTotal = rawProgress && typeof rawProgress === "object"
+        ? Number(rawProgress.total || taskDef.target_value || 0)
+        : Number(taskDef.target_value || 0);
+      return {
+        task_id: taskState.task_id || taskDef.task_id || taskId,
+        title: taskState.title || taskState.name || taskDef.title || taskId,
+        description: taskState.description || taskDef.description || "",
+        completed: Boolean(taskState.claimed || taskState.completed || taskState.status === "completed"),
+        reward_desc: taskState.reward_desc || formatTaskRewards(taskState.rewards || taskDef.rewards),
+        progress_current: Number.isFinite(progressCurrent) ? progressCurrent : 0,
+        progress_total: Number.isFinite(progressTotal) ? progressTotal : 0
+      };
+    });
+  }
+
   function renderTasks(engine) {
     if (!engine) return;
     const root = document.getElementById("viz-task-list");
     if (!root) return;
-    const tasks = engine.state.tasks || [];
+    const tasks = normalizeTasks(engine);
+    if (!tasks.length) {
+      root.innerHTML = '<p class="viz-muted">当前暂无任务。</p>';
+      return;
+    }
     root.innerHTML = tasks.map((task) => {
+      const progressText = task.progress_total > 0
+        ? `<p class="viz-muted">进度: ${task.progress_current}/${task.progress_total}</p>`
+        : "";
       return `
         <article class="viz-task-item ${task.completed ? 'completed' : ''}">
           <div class="viz-task-item-head">
@@ -447,6 +508,7 @@
             <span class="viz-muted">${task.completed ? '已完成' : '进行中'}</span>
           </div>
           <p class="viz-muted">${task.description}</p>
+          ${progressText}
           <p class="viz-muted">奖励: ${task.reward_desc}</p>
           ${task.completed ? '' : `<button class="viz-btn accent" data-task-id="${task.task_id}" type="button">完成任务</button>`}
         </article>
@@ -531,111 +593,23 @@
     }
     // 健壮初始化抽屉展开状态
     if (!uiState.drawerOpen || typeof uiState.drawerOpen !== 'object') {
-      uiState.drawerOpen = {
-        farm: true, ranch: false, process: false, orders: false, company: false, partnership: false, characters: false, inventory: false, tasks: false, story: false, openmode: false, skills: false
-      };
+      uiState.drawerOpen = {};
     }
-
-    const modules = [
-      {
-        id: "farm",
-        title: "农场",
-        render: function() {
-          return '<div id="viz-farm-grid"></div>';
-        }
-      },
-      {
-        id: "ranch",
-        title: "养殖",
-        render: function() {
-          return '<div id="viz-ranch-grid"></div>';
-        }
-      },
-      {
-        id: "process",
-        title: "加工车间",
-        render: function() {
-          return '<div id="viz-process-list"></div>';
-        }
-      },
-      { 
-        id: "orders", 
-        title: "订单履约", 
-        render: function() { 
-          return '<div id="viz-orders-list"></div>'; 
-        } 
-      },
-      { 
-        id: "company", 
-        title: "公司治理", 
-        render: function() { 
-          return '<div id="viz-company-list"></div>'; 
-        } 
-      },
-      { 
-        id: "partnership", 
-        title: "合作推进", 
-        render: function() { 
-          return '<div id="viz-partnership-list"></div>'; 
-        } 
-      },
-      { 
-        id: "characters", 
-        title: "村民与角色", 
-        render: function() { 
-          return '<div id="viz-character-list"></div>'; 
-        } 
-      },
-      { 
-        id: "inventory", 
-        title: "库存", 
-        render: function() { 
-          return '<div id="viz-inventory-list"></div>'; 
-        } 
-      },
-      { 
-        id: "tasks", 
-        title: "任务", 
-        render: function() { 
-          return '<div id="viz-task-list"></div>'; 
-        } 
-      },
-      { 
-        id: "story", 
-        title: "剧情", 
-        render: function() { 
-          return '<div id="viz-story-timeline"></div>'; 
-        } 
-      },
-      {
-        id: "openmode",
-        title: "开放模式",
-        render: function() {
-          return '<div id="viz-open-suggestions"></div>';
-        }
-      },
-      {
-        id: "skills",
-        title: "系统技能",
-        render: function() {
-          return '<div id="viz-skills-list"></div>';
-        }
-      }
-    ];
 
     const grid = document.getElementById("viz-module-grid");
     if (!grid) return;
-    grid.innerHTML = modules.map(mod => `
-      <section class="viz-drawer-card">
-        <header class="viz-drawer-toggle" data-drawer-target="${mod.id}" aria-expanded="${uiState.drawerOpen[mod.id] ? 'true' : 'false'}">
-          <span>${mod.title}</span>
-          <em>${uiState.drawerOpen[mod.id] ? '收起' : '展开'}</em>
-        </header>
-        <div class="viz-drawer-body${uiState.drawerOpen[mod.id] ? ' is-open' : ''}" id="${mod.id}">
-          ${mod.render()}
-        </div>
-      </section>
-    `).join("");
+    const toggles = grid.querySelectorAll('.viz-drawer-toggle[data-drawer-target]');
+    toggles.forEach((toggle) => {
+      const targetId = toggle.getAttribute('data-drawer-target');
+      if (!targetId) return;
+      const body = document.getElementById(targetId);
+      if (!body) return;
+      const cachedState = uiState.drawerOpen[targetId];
+      const open = typeof cachedState === 'boolean'
+        ? cachedState
+        : (toggle.getAttribute('aria-expanded') === 'true' || body.classList.contains('is-open'));
+      setDrawerState(targetId, open);
+    });
 
     // 渲染各业务内容到对应容器
     try {

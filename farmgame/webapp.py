@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from http import HTTPStatus
 from pathlib import Path
@@ -676,8 +677,33 @@ def _load_allowed_origins() -> str | list[str]:
     raw = os.getenv("ALLRICHAI_ALLOWED_ORIGINS", "*").strip()
     if not raw or raw == "*":
         return "*"
-    origins = [item.strip() for item in raw.split(",") if item.strip()]
-    return origins or "*"
+    normalized: list[str] = []
+    for item in (part.strip() for part in raw.split(",")):
+        if not item:
+            continue
+        if item == "*":
+            return "*"
+
+        # Support both full origin form (https://example.com) and host-only form (example.com).
+        if "://" in item:
+            normalized.append(item.rstrip("/"))
+            continue
+
+        wildcard_host = item.startswith("*.")
+        host = item[2:] if wildcard_host else item
+        host = host.lstrip(".").strip().rstrip("/")
+        if not host:
+            continue
+
+        if wildcard_host:
+            escaped = re.escape(host)
+            normalized.append(rf"https?://([a-z0-9-]+\.)*{escaped}")
+            continue
+
+        normalized.extend([f"https://{host}", f"http://{host}"])
+
+    deduped = list(dict.fromkeys(normalized))
+    return deduped or "*"
 
 
 def _ensure_save_dirs() -> None:
