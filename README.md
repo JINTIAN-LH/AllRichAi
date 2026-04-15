@@ -3,7 +3,7 @@
 一个基于 Python 的多端经营原型：
 - CLI：规则验证与快速迭代
 - Flask Web：主页 / 剧情看板 / 个人中心 / 可视化页
-- 静态发布：`release_src` 为发布源，`dist` 为构建产物
+- 前端打包：本地工程直出 `dist`，用于静态前端部署
 
 核心原则：经营规则只在引擎层维护，界面层不复制业务逻辑。
 
@@ -54,7 +54,6 @@ farmgame/                 # 核心源码（唯一规则源）
   static/ templates/
 
 docs/                     # 主文档源
-release_src/              # 静态发布源（可部署）
 dist/                     # 构建产物（可删除重建）
 saves/                    # 本地存档
 tests/                    # unittest 测试
@@ -69,36 +68,20 @@ tests/                    # unittest 测试
   - Web：`saves/web_save.json`
   - Web 槽位：`saves/web_slots/`
   - 静态页：浏览器 `localStorage`
-- 文档源：优先修改根目录和 `docs/`，`release_src/docs/` 视为同步产物
+- 文档源：优先修改根目录和 `docs/`
 
-## 4. 静态发布
+## 4. 前端打包（本地工程直出）
 
-静态发布以 `release_src` 为源，构建后生成 `dist` 与 `dist-static-upload.zip`。
+打包过程直接使用本地工程源：
+- `farmgame/templates/viz_index.html` 作为静态入口模板
+- `farmgame/static/viz/` 作为静态资源
+- 构建后生成 `dist` 与 `dist-static-upload.zip`
 
 ### 常用命令
 
 ```bash
 build_dist.bat
 ```
-
-```bash
-build_dist.bat --from-current-dist
-```
-
-```bash
-build_dist.bat --sync-from-project
-```
-
-```bash
-build_dist.bat --from-current-dist --sync-from-project
-```
-
-同步钩子：`sync_to_release.py`
-- 同步 `docs/*.md`
-- 同步根目录 Markdown 到 `release_src/docs/root`
-- 同步 `saves` 导出 JSON 到 `release_src/data/exports`
-- 同步 `farmgame/static` 到 `release_src/assets/source-static`
-- 生成 `release_src/data/sync-manifest.json`
 
 ## 5. 部署（推荐）
 
@@ -128,7 +111,7 @@ build_dist.bat --from-current-dist --sync-from-project
 ### funloom.ai 前端
 
 ```bash
-build_dist.bat --sync-from-project
+build_dist.bat
 ```
 
 将 `dist/` 上传为静态目录。
@@ -161,5 +144,4 @@ set ALLRICHAI_LLM_CONFIG=C:\path\to\llm_api.json
 
 - 只在 `farmgame/` 修改规则
 - 只在根目录 `docs/` 写长期文档
-- `release_src/` 作为发布工件源，不做双向手工维护
 - `dist/` 与压缩包视为构建结果，随时可重建

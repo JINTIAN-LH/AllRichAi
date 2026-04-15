@@ -1,7 +1,7 @@
 # Project Guidelines
 
 ## Scope
-- This repository is a Python game prototype with shared business rules across CLI, Flask Web, and static-release fronts.
+- This repository is a Python game prototype with shared business rules across CLI, Flask Web, and packaged static frontend.
 - Keep instructions minimal and always-on; use linked docs for deep design details.
 
 ## Build And Test
@@ -14,24 +14,22 @@
 - Windows helper script:
   - `start_web.bat` starts web flow and can bootstrap `.venv` dependencies.
   - `start_web.bat --check` only validates environment.
-- Static release packaging:
+- Frontend packaging:
   - `build_dist.bat`
-  - `build_dist.bat --from-current-dist`
-  - `build_dist.bat --sync-from-project`
 
 ## Architecture
 - Rule ownership is centralized in `farmgame/engine.py`. Do not duplicate or fork business rules into UI layers.
 - `farmgame/app.py` and `farmgame/webapp.py` are interface layers over the same engine contracts.
 - `farmgame/models.py`, `farmgame/balance.py`, `farmgame/content.py`, and `farmgame/validators.py` are core domain modules.
-- `release_src/` is the static publish source; keep behavior aligned with main-engine intent.
+- Frontend package inputs are `farmgame/templates/viz_index.html` and `farmgame/static/viz/`.
 
 ## Conventions
-- Treat root docs as canonical authoring source. `release_src/docs/` and `release_src/assets/.../viz` are mirrored artifacts.
+- Treat root docs as canonical authoring source.
 - Keep save-path semantics intact:
   - CLI save: `saves/savegame.json`
   - Web save: `saves/web_save.json`
   - Web slots: `saves/web_slots/`
-  - Static release saves: browser `localStorage`
+  - Frontend package saves: browser `localStorage`
 - Preserve route and redirect behavior covered by tests in `tests/test_engine.py`.
 - Follow existing CSS modularization in `farmgame/static/css/` and avoid one-off style overrides when a module file exists.
 
@@ -51,5 +49,4 @@
 
 ## Pitfalls
 - Test config includes pytest metadata, but the active test suite is unittest-style.
-- `sync_to_release.py` resets release doc/export targets before copying; be careful when changing release-side files directly.
 - Web port resolution priority is env var -> config JSON -> default 5000.

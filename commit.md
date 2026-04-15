@@ -1,3 +1,31 @@
+## Commit #7: 移除弃用发布资源并切换本地源打包链路 ✅
+**日期**: 2026-04-15
+**作者**: GitHub Copilot
+**类型**: Cleanup + Build + Release
+
+### 工作内容
+按“自检 -> 打包构建 -> 更新提交记录 -> 提交推送”流程完成一次发布前收敛，彻底移除弃用的静态发布源与同步脚本，统一为“本地工程作为唯一前端打包源”。
+
+### 关键改动
+- 移除弃用资源：
+   - 删除 `release_src/` 全目录
+   - 删除 `sync_to_release.py`
+- 更新打包链路：
+   - `build_dist.py` 移除弃用兼容参数 `--sync-from-project` / `--from-current-dist`
+   - 统一使用本地源模板与资源进行前端构建（`farmgame/templates/viz_index.html` + `farmgame/static/viz/`）
+- 更新文档与仓库指引：
+   - `README.md`
+   - `docs/deploy-render-funloom.md`
+   - `.github/copilot-instructions.md`
+   - `.github/skills/selfcheck-package-build-commit-push/SKILL.md`
+
+### 验证结果
+- 单元测试：`python -m unittest discover -s tests` -> **21/21 通过**
+- 设计审计：`python -m farmgame --audit` -> **执行成功**
+- 打包构建：`build_dist.bat` -> **成功**
+
+---
+
 ## Commit #6: 自检打包提交流程执行（含现有改动）✅
 **日期**: 2026-04-15
 **作者**: GitHub Copilot

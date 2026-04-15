@@ -32,7 +32,7 @@ Notes:
 Build static package locally:
 
 ```bash
-build_dist.bat --sync-from-project
+build_dist.bat
 ```
 
 Then:
@@ -48,13 +48,12 @@ Then:
 
 ## 4) Structure Slimming Strategy (Non-breaking)
 
-Keep current runtime intact, but enforce a strict ownership boundary:
+Keep current runtime intact, with clear ownership:
 - Source of truth (game rules + web backend): `farmgame/`
-- Source of truth (static publish): `release_src/`
+- Source of truth (frontend package input): `farmgame/templates/viz_index.html` and `farmgame/static/viz/`
 - Build output only (rebuildable): `dist/`, `dist-static-upload.zip`
-- Mirror docs only (do not hand-edit): `release_src/docs/`
 
 Recommended long-term clean-up:
 1. Add `deploy/` folder and move deployment-only docs/scripts there.
 2. Keep only one canonical README for deployment flow, then link from others.
-3. Add a CI check that blocks direct edits to mirror-only paths unless explicitly intended.
+3. Add a CI check to ensure `dist/` is treated as build artifact, not source.

@@ -20,7 +20,7 @@ Run a full local release workflow for this repository on Windows.
 - python -m farmgame --audit
 
 2. Package and build
-- build_dist.bat --sync-from-project
+- build_dist.bat
 
 3. Commit log update
 - Add a new standardized section to commit.md with:
@@ -38,7 +38,7 @@ Run a full local release workflow for this repository on Windows.
 
 ## Repository-specific Notes
 - Business rules authority stays in farmgame/engine.py.
-- build_dist.bat --sync-from-project is the canonical packaging path.
+- build_dist.bat is the canonical packaging path.
 - Tests are unittest style.
 
 ## Fallback

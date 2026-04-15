@@ -1,70 +1,56 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="game-container" data-turn="{{ snapshot.day }}">
+<section class="game-container" data-turn="{{ snapshot.day }}">
   <header class="game-header">
     <div class="game-header-title">【 躺平农场主：共同富裕计划 】</div>
-    <div class="time-bar" id="header-line">第 {{ snapshot.day }} 天 | {{ snapshot.time }} | {{ snapshot.season }} | {{ snapshot.weather }} | 系统 Lv.{{ snapshot.systemLevel }}</div>
+    <div class="time-bar" id="story-header-line">第 {{ snapshot.day }} 天 | {{ snapshot.time }} | {{ snapshot.season }} | {{ snapshot.weather }} | 系统 Lv.{{ snapshot.systemLevel }}</div>
   </header>
 
   <main class="panel-grid">
     <section class="status-panel">
-      <div class="status-panel-header">📊 全局状态</div>
-      <div class="status-grid">
-        <div class="status-item"><div class="status-item-label">资金</div><div class="status-item-value" id="money-value">{{ snapshot.money }} 元</div></div>
-        <div class="status-item"><div class="status-item-label">微粒</div><div class="status-item-value" id="particle-value">{{ snapshot.particle }}</div></div>
-        <div class="status-item"><div class="status-item-label">生命源能</div><div class="status-item-value" id="energy-value">{{ snapshot.energy }}</div></div>
-        <div class="status-item"><div class="status-item-label">躺平意愿</div><div class="status-item-value" id="lazy-value">{{ snapshot.lazyWill }}</div></div>
-        <div class="status-item"><div class="status-item-label">村民支持度</div><div class="status-item-value" id="support-value">{{ snapshot.villagerSupport }}</div></div>
-        <div class="status-item"><div class="status-item-label">家庭和睦度</div><div class="status-item-value" id="family-value">{{ snapshot.familyHarmony }}</div></div>
-        <div class="status-item"><div class="status-item-label">品牌知名度</div><div class="status-item-value" id="brand-value">{{ snapshot.brand }}</div></div>
-        <div class="status-item"><div class="status-item-label">公司</div><div class="status-item-value" id="company-value">{{ snapshot.company }}</div></div>
-        <div class="status-item"><div class="status-item-label">土地</div><div class="status-item-value" id="land-value">{{ snapshot.land }} 亩</div></div>
-      </div>
+      <div class="status-panel-header">全局状态</div>
+      <div class="status-grid" id="story-status-grid"></div>
     </section>
 
     <section class="roles-panel">
       <div class="roles-panel-headline">
-        <div class="roles-panel-header">👤 角色状态</div>
-        <button type="button" class="btn btn-primary" onclick="openRolesModal()">查看角色详情</button>
+        <div class="roles-panel-header">角色状态</div>
+        <button id="btn-open-roles" type="button" class="btn btn-primary">查看角色详情</button>
       </div>
-      <div class="roles-preview" id="roles-preview">共 {{ snapshot.roles|length }} 位角色，点击按钮查看完整状态</div>
+      <div class="roles-preview" id="roles-preview">角色状态加载中</div>
     </section>
 
     <section class="event-panel">
-      <div class="event-panel-header">🌱 作物状态</div>
-      <div class="event-panel-content" id="crop-text">{{ snapshot.crops.text }}</div>
+      <div class="event-panel-header">作物状态</div>
+      <div class="event-panel-content" id="crop-text"></div>
     </section>
 
     <section class="event-panel">
-      <div class="event-panel-header">📰 当前事件</div>
-      <div class="event-panel-content" id="event-text">{{ snapshot.events }}</div>
+      <div class="event-panel-header">当前事件</div>
+      <div class="event-panel-content" id="event-text"></div>
     </section>
 
     <section class="commands-panel">
-      <div class="commands-panel-header">🎯 可下达指令</div>
-      <div class="commands-grid" id="commands-grid">
-        {% for cmd in snapshot.commands %}
-        <div class="command-item" onclick="executeFixedCommand('{{ loop.index }}','{{ cmd }}')">{{ cmd }}</div>
-        {% endfor %}
-      </div>
-      <div class="mt-16">
-        <input type="text" id="custom-input" class="custom-command-input" placeholder="7. 自定义指令：自由输入你想做的事" maxlength="200" onkeypress="if(event.key==='Enter') executeCustomCommand()">
-        <button class="btn btn-primary" onclick="executeCustomCommand()" style="width: 100%;">执行自定义指令</button>
+      <div class="commands-panel-header">可下达指令</div>
+      <div class="commands-grid" id="story-commands"></div>
+      <div class="mt-16 command-entry">
+        <input type="text" id="story-custom-input" class="custom-command-input" placeholder="自由输入你想做的事" maxlength="200">
+        <button id="story-custom-submit" class="btn btn-primary" type="button">执行自定义指令</button>
       </div>
     </section>
 
     <section class="result-panel" id="result-panel">
-      <button class="result-close" type="button" onclick="closeResultPanel()" aria-label="关闭结果">×</button>
-      <div class="result-panel-header">📝 执行结果</div>
-      <div class="result-text" id="result-text"></div>
+      <button class="result-close" id="btn-close-result" type="button" aria-label="关闭结果">×</button>
+      <div class="result-panel-header">执行结果</div>
+      <div class="result-text" id="story-result">点击任意指令开始推进剧情。</div>
       <div class="result-changes">
         <div class="result-changes-title">数值变化</div>
-        <div id="result-changes-list"></div>
+        <div id="result-changes-list" class="change-list"></div>
       </div>
     </section>
   </main>
-</div>
+</section>
 
 <div class="loading-mask" id="loading-mask"><div class="loading-spinner"></div></div>
 
@@ -86,6 +72,17 @@
 
 <script>
 let isExecuting = false;
+const STATUS_ITEMS = [
+  { key: 'money', label: '资金', suffix: ' 元' },
+  { key: 'particle', label: '微粒', suffix: '' },
+  { key: 'energy', label: '生命源能', suffix: '' },
+  { key: 'lazyWill', label: '躺平意愿', suffix: '' },
+  { key: 'villagerSupport', label: '村民支持度', suffix: '' },
+  { key: 'familyHarmony', label: '家庭和睦度', suffix: '' },
+  { key: 'brand', label: '品牌知名度', suffix: '' },
+  { key: 'company', label: '公司', suffix: '' },
+  { key: 'land', label: '土地', suffix: ' 亩' }
+];
 
 function openRolesModal() {
   const modal = document.getElementById('roles-modal');
@@ -104,6 +101,103 @@ function closeRolesModal() {
 function closeResultPanel() {
   const resultPanel = document.getElementById('result-panel');
   if (resultPanel) resultPanel.classList.remove('active');
+}
+
+function formatValue(snapshot, item) {
+  const value = snapshot[item.key];
+  return `${value ?? ''}${item.suffix}`;
+}
+
+function renderStatusGrid(snapshot) {
+  const grid = document.getElementById('story-status-grid');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+  STATUS_ITEMS.forEach((item) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'status-item';
+
+    const label = document.createElement('div');
+    label.className = 'status-item-label';
+    label.textContent = item.label;
+
+    const value = document.createElement('div');
+    value.className = 'status-item-value';
+    value.textContent = formatValue(snapshot, item);
+
+    wrap.appendChild(label);
+    wrap.appendChild(value);
+    grid.appendChild(wrap);
+  });
+}
+
+function renderCommands(commands) {
+  const panel = document.getElementById('story-commands');
+  if (!panel) return;
+
+  panel.innerHTML = '';
+  if (!Array.isArray(commands)) return;
+
+  commands.forEach((cmd, idx) => {
+    const item = document.createElement('div');
+    item.className = 'command-item';
+    item.textContent = cmd;
+    item.onclick = () => executeFixedCommand(idx + 1, cmd);
+    panel.appendChild(item);
+  });
+}
+
+function renderRoles(roles) {
+  const rolesList = document.getElementById('roles-list');
+  const rolesPreview = document.getElementById('roles-preview');
+  if (!Array.isArray(roles)) {
+    if (rolesPreview) rolesPreview.textContent = '暂无角色数据';
+    return;
+  }
+
+  if (rolesList) {
+    rolesList.innerHTML = '';
+    roles.forEach((role) => {
+      const item = document.createElement('div');
+      item.className = 'role-item';
+
+      const name = document.createElement('div');
+      name.className = 'role-name';
+      if (Object.prototype.hasOwnProperty.call(role, 'mood')) {
+        name.textContent = `${role.name}：${role.mood} | 体力 ${role.energy}`;
+      } else {
+        name.textContent = `${role.name}：好感 ${role.favor} | ${role.state}`;
+      }
+
+      item.appendChild(name);
+      rolesList.appendChild(item);
+    });
+  }
+
+  if (rolesPreview) {
+    rolesPreview.textContent = `共 ${roles.length} 位角色，点击按钮查看完整状态`;
+  }
+}
+
+function applyPanelSnapshot(snapshot) {
+  const header = document.getElementById('story-header-line');
+  if (header) {
+    header.textContent = `第 ${snapshot.day} 天 | ${snapshot.time} | ${snapshot.season} | ${snapshot.weather} | 系统 Lv.${snapshot.systemLevel}`;
+  }
+
+  renderStatusGrid(snapshot);
+  renderRoles(snapshot.roles);
+  renderCommands(snapshot.commands);
+
+  const cropText = document.getElementById('crop-text');
+  if (cropText) {
+    cropText.textContent = (snapshot.crops && snapshot.crops.text) ? snapshot.crops.text : '无 | 未播种 | 剩余 0 天';
+  }
+
+  const eventText = document.getElementById('event-text');
+  if (eventText) {
+    eventText.textContent = snapshot.events || '暂无事件';
+  }
 }
 
 document.addEventListener('keydown', (event) => {
@@ -125,7 +219,7 @@ function executeFixedCommand(index, commandText) {
 }
 
 function executeCustomCommand() {
-  const input = document.getElementById('custom-input');
+  const input = document.getElementById('story-custom-input');
   const value = (input.value || '').trim();
   if (!value) return;
   executeCommand(value);
@@ -152,7 +246,7 @@ async function executeCommand(command) {
     await refreshPanelState();
     displayResult(data);
 
-    const input = document.getElementById('custom-input');
+    const input = document.getElementById('story-custom-input');
     if (input) input.value = '';
   } catch (error) {
     alert('执行失败：' + error.message);
@@ -167,69 +261,16 @@ async function refreshPanelState() {
   if (!r.ok) return;
   const payload = await r.json();
   if (!payload.success || !payload.snapshot) return;
-  applySnapshot(payload.snapshot);
+  applyPanelSnapshot(payload.snapshot);
 }
 
 function applySnapshot(s) {
-  const header = document.getElementById('header-line');
-  if (header) header.textContent = `第 ${s.day} 天 | ${s.time} | ${s.season} | ${s.weather} | 系统 Lv.${s.systemLevel}`;
-  setText('money-value', `${s.money} 元`);
-  setText('particle-value', s.particle);
-  setText('energy-value', s.energy);
-  setText('lazy-value', s.lazyWill);
-  setText('support-value', s.villagerSupport);
-  setText('family-value', s.familyHarmony);
-  setText('brand-value', s.brand);
-  setText('company-value', s.company);
-  setText('land-value', `${s.land} 亩`);
-  setText('crop-text', (s.crops && s.crops.text) ? s.crops.text : '无 | 未播种 | 剩余 0 天');
-  setText('event-text', s.events || '暂无事件');
-
-  const roles = document.getElementById('roles-list');
-  if (roles && Array.isArray(s.roles)) {
-    roles.innerHTML = '';
-    s.roles.forEach(role => {
-      const item = document.createElement('div');
-      item.className = 'role-item';
-      const name = document.createElement('div');
-      name.className = 'role-name';
-      if (Object.prototype.hasOwnProperty.call(role, 'mood')) {
-        name.textContent = `${role.name}：${role.mood} | 体力 ${role.energy}`;
-      } else {
-        name.textContent = `${role.name}：好感 ${role.favor} | ${role.state}`;
-      }
-      item.appendChild(name);
-      roles.appendChild(item);
-    });
-  }
-
-  const rolesPreview = document.getElementById('roles-preview');
-  if (rolesPreview) {
-    const count = Array.isArray(s.roles) ? s.roles.length : 0;
-    rolesPreview.textContent = `共 ${count} 位角色，点击按钮查看完整状态`;
-  }
-
-  const commands = document.getElementById('commands-grid');
-  if (commands && Array.isArray(s.commands)) {
-    commands.innerHTML = '';
-    s.commands.forEach((cmd, idx) => {
-      const item = document.createElement('div');
-      item.className = 'command-item';
-      item.textContent = cmd;
-      item.onclick = () => executeFixedCommand(idx + 1, cmd);
-      commands.appendChild(item);
-    });
-  }
-}
-
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = String(value ?? '');
+  applyPanelSnapshot(s);
 }
 
 function displayResult(data) {
   const resultPanel = document.getElementById('result-panel');
-  const resultText = document.getElementById('result-text');
+  const resultText = document.getElementById('story-result');
   const changesList = document.getElementById('result-changes-list');
   resultText.textContent = data.result_text || '指令执行完成';
 
@@ -248,5 +289,37 @@ function displayResult(data) {
 
   resultPanel.classList.add('active');
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.body.classList.add('story-panel-style');
+
+  const initialSnapshot = {{ snapshot | tojson }};
+  applySnapshot(initialSnapshot);
+
+  const openRolesBtn = document.getElementById('btn-open-roles');
+  if (openRolesBtn) {
+    openRolesBtn.addEventListener('click', openRolesModal);
+  }
+
+  const closeResultBtn = document.getElementById('btn-close-result');
+  if (closeResultBtn) {
+    closeResultBtn.addEventListener('click', closeResultPanel);
+  }
+
+  const customSubmitBtn = document.getElementById('story-custom-submit');
+  if (customSubmitBtn) {
+    customSubmitBtn.addEventListener('click', executeCustomCommand);
+  }
+
+  const customInput = document.getElementById('story-custom-input');
+  if (customInput) {
+    customInput.addEventListener('keypress', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        executeCustomCommand();
+      }
+    });
+  }
+});
 </script>
 {% endblock %}

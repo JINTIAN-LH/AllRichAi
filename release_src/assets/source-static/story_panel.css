@@ -1,6 +1,0 @@
-﻿/*
-  Story panel stylesheet entrypoint (modular).
-  Keep legacy bundle loaded while extracting page rules into story-panel modules.
-*/
-@import url("css/core/tokens.css");
-@import url("css/story-panel/page.css");

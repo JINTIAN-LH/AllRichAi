@@ -2,20 +2,20 @@ from __future__ import annotations
 
 import argparse
 import shutil
-import subprocess
-import sys
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SOURCE_DIR = ROOT / "release_src"
+LOCAL_TEMPLATE = ROOT / "farmgame" / "templates" / "viz_index.html"
+LOCAL_STATIC_VIZ_DIR = ROOT / "farmgame" / "static" / "viz"
+BUILD_SRC_DIR = ROOT / ".build_frontend_src"
 DIST_DIR = ROOT / "dist"
 ZIP_PATH = ROOT / "dist-static-upload.zip"
 
 REQUIRED_RELATIVE_FILES = (
     Path("index.html"),
-    Path("assets") / "styles.css",
-    Path("assets") / "app.js",
+    Path("assets") / "viz" / "css" / "base.css",
+    Path("assets") / "viz" / "js" / "engineBridge.js",
 )
 
 MAX_SINGLE_FILE = 10 * 1024 * 1024  # 10MB
@@ -30,17 +30,7 @@ def _iter_files(base_dir: Path):
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build static dist package and zip for upload."
-    )
-    parser.add_argument(
-        "--from-current-dist",
-        action="store_true",
-        help="先将 dist 当前内容回写到 release_src，再执行构建与打包。",
-    )
-    parser.add_argument(
-        "--sync-from-project",
-        action="store_true",
-        help="执行项目同步钩子，将动态工程内容同步到 release_src 后再构建。",
+        description="Build frontend dist package and zip directly from local project source."
     )
     return parser.parse_args()
 
@@ -52,44 +42,37 @@ def _ensure_required_files(base_dir: Path, label: str) -> None:
         raise FileNotFoundError(f"{label} 缺少必要文件: " + ", ".join(missing))
 
 
-def _ensure_source_ready() -> None:
-    _ensure_required_files(SOURCE_DIR, "release_src")
+def _reset_dir(path: Path) -> None:
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir(parents=True, exist_ok=True)
 
 
-def _rebuild_dist() -> None:
+def _rewrite_viz_template_to_static(template_text: str) -> str:
+    # Keep page logic unchanged; only remap static resource URLs for standalone frontend hosting.
+    return template_text.replace('/static/viz/', './assets/viz/')
+
+
+def _prepare_local_frontend_source() -> None:
+    if not LOCAL_TEMPLATE.exists():
+        raise FileNotFoundError(f"Local frontend template missing: {LOCAL_TEMPLATE}")
+    if not LOCAL_STATIC_VIZ_DIR.exists():
+        raise FileNotFoundError(f"Local viz static directory missing: {LOCAL_STATIC_VIZ_DIR}")
+
+    _reset_dir(BUILD_SRC_DIR)
+    (BUILD_SRC_DIR / "assets").mkdir(parents=True, exist_ok=True)
+
+    template_text = LOCAL_TEMPLATE.read_text(encoding="utf-8")
+    static_html = _rewrite_viz_template_to_static(template_text)
+    (BUILD_SRC_DIR / "index.html").write_text(static_html, encoding="utf-8")
+
+    shutil.copytree(LOCAL_STATIC_VIZ_DIR, BUILD_SRC_DIR / "assets" / "viz")
+
+
+def _rebuild_dist_from_local_source() -> None:
     if DIST_DIR.exists():
         shutil.rmtree(DIST_DIR)
-    shutil.copytree(SOURCE_DIR, DIST_DIR)
-
-
-def _ensure_dist_ready() -> None:
-    _ensure_required_files(DIST_DIR, "dist")
-
-
-def _sync_dist_to_source() -> None:
-    _ensure_dist_ready()
-    if SOURCE_DIR.exists():
-        shutil.rmtree(SOURCE_DIR)
-    shutil.copytree(DIST_DIR, SOURCE_DIR)
-    print(f"Synced dist -> release_src: {SOURCE_DIR}")
-
-
-def _run_project_sync_hook() -> None:
-    hook = ROOT / "sync_to_release.py"
-    if not hook.exists():
-        print("[WARN] --sync-from-project 已启用，但未找到 sync_to_release.py，已跳过。")
-        return
-
-    cmd = [
-        sys.executable,
-        str(hook),
-        "--project-root",
-        str(ROOT),
-        "--release-src",
-        str(SOURCE_DIR),
-    ]
-    print(f"Running sync hook: {hook}")
-    subprocess.run(cmd, check=True)
+    shutil.copytree(BUILD_SRC_DIR, DIST_DIR)
 
 
 def _collect_sizes() -> tuple[int, list[tuple[str, int]]]:
@@ -133,18 +116,17 @@ def _print_report(total: int, files: list[tuple[str, int]]) -> None:
 
 
 def main() -> None:
-    args = _parse_args()
-    if args.from_current_dist:
-        _sync_dist_to_source()
+    _parse_args()
 
-    if args.sync_from_project:
-        _run_project_sync_hook()
-
-    _ensure_source_ready()
-    _rebuild_dist()
+    _prepare_local_frontend_source()
+    _ensure_required_files(BUILD_SRC_DIR, "local frontend source")
+    _rebuild_dist_from_local_source()
     total, files = _collect_sizes()
     _create_zip()
     _print_report(total, files)
+
+    if BUILD_SRC_DIR.exists():
+        shutil.rmtree(BUILD_SRC_DIR)
 
 
 if __name__ == "__main__":
