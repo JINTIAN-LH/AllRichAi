@@ -3,6 +3,7 @@
   const LEGACY_STORAGE_KEY = "tf_static_state_v1";
   const BACKEND_KEY = "tf_backend_config_v1";
   const BRIDGE_KEY = "tf_static_bridge_v1";
+  const BRIDGE_SLOT_KEY = "tf_static_bridge_slot_v1";
   const DEFAULT_GOAL = "低压力推进经营并保持家庭关系稳定";
   const PROFILE_MODAL_ID = "modal-profile-setup";
   const SETTINGS_MODAL_ID = "settings-modal";
@@ -28,6 +29,8 @@
   let backendConfig = loadBackendConfig();
   let serverSlots = [];
   let bridgeConfig = loadBridgeConfig();
+  let bridgeSlotConfigs = loadBridgeSlotConfigs();
+  let activeSlot = 1;
   let activePage = "home";
   let profilePromptShown = false;
   let flashMuted = false;
@@ -111,6 +114,63 @@
       signVersion: String(nextConfig.signVersion || "v1").trim() || "v1"
     };
     localStorage.setItem(BRIDGE_KEY, JSON.stringify(bridgeConfig));
+  }
+
+  function loadBridgeSlotConfigs() {
+    try {
+      const raw = localStorage.getItem(BRIDGE_SLOT_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+      return parsed;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function persistBridgeSlotConfigs() {
+    localStorage.setItem(BRIDGE_SLOT_KEY, JSON.stringify(bridgeSlotConfigs));
+  }
+
+  function getBridgeConfigForSlot(slot) {
+    const key = String(Number(slot) || 1);
+    const fromSlot = bridgeSlotConfigs[key];
+    if (!fromSlot || typeof fromSlot !== "object") return null;
+    return {
+      enabled: !!fromSlot.enabled,
+      endpoint: String(fromSlot.endpoint || "").trim(),
+      apiKey: String(fromSlot.apiKey || "").trim(),
+      apiKeyHeader: String(fromSlot.apiKeyHeader || "Authorization").trim() || "Authorization",
+      model: String(fromSlot.model || "").trim(),
+      timeoutMs: clamp(Number(fromSlot.timeoutMs || 15000), 3000, 60000),
+      signEnabled: !!fromSlot.signEnabled,
+      clientId: String(fromSlot.clientId || "").trim(),
+      signVersion: String(fromSlot.signVersion || "v1").trim() || "v1"
+    };
+  }
+
+  function setBridgeConfigForSlot(slot, config) {
+    const key = String(Number(slot) || 1);
+    bridgeSlotConfigs[key] = {
+      enabled: !!config.enabled,
+      endpoint: String(config.endpoint || "").trim(),
+      apiKey: String(config.apiKey || "").trim(),
+      apiKeyHeader: String(config.apiKeyHeader || "Authorization").trim() || "Authorization",
+      model: String(config.model || "").trim(),
+      timeoutMs: clamp(Number(config.timeoutMs || 15000), 3000, 60000),
+      signEnabled: !!config.signEnabled,
+      clientId: String(config.clientId || "").trim(),
+      signVersion: String(config.signVersion || "v1").trim() || "v1"
+    };
+    persistBridgeSlotConfigs();
+  }
+
+  function deleteBridgeConfigForSlot(slot) {
+    const key = String(Number(slot) || 1);
+    if (Object.prototype.hasOwnProperty.call(bridgeSlotConfigs, key)) {
+      delete bridgeSlotConfigs[key];
+      persistBridgeSlotConfigs();
+    }
   }
 
   function loadEngine() {
@@ -555,6 +615,31 @@
       method: "POST",
       body: JSON.stringify({ slot })
     });
+    const normalizedSlot = Number(slot) || 1;
+    if (op === "save") {
+      activeSlot = normalizedSlot;
+      setBridgeConfigForSlot(normalizedSlot, bridgeConfig);
+    } else if (op === "load") {
+      activeSlot = normalizedSlot;
+      const loadedBridgeConfig = getBridgeConfigForSlot(normalizedSlot);
+      if (loadedBridgeConfig) {
+        saveBridgeConfig(loadedBridgeConfig);
+        bridgeConnectivityState = {
+          tested: false,
+          healthy: false,
+          mode: detectBridgeMode(loadedBridgeConfig.endpoint)
+        };
+      }
+    } else if (op === "delete") {
+      deleteBridgeConfigForSlot(normalizedSlot);
+      if (activeSlot === normalizedSlot) {
+        bridgeConnectivityState = {
+          tested: false,
+          healthy: false,
+          mode: detectBridgeMode(bridgeConfig.endpoint)
+        };
+      }
+    }
     hydrateEngineFromApiPayload(data, data.message || `槽位 ${slot} 操作完成`);
     return data;
   }
@@ -673,7 +758,7 @@
     const testedText = bridgeConnectivityState.tested
       ? (bridgeConnectivityState.healthy ? "，已连通" : "，待重测")
       : "，未测试";
-    status.textContent = `当前推理模式：${modeText}${bridgeConfig.apiKey ? "（含密钥）" : ""}${testedText}`;
+    status.textContent = `当前推理模式：${modeText}${bridgeConfig.apiKey ? "（含密钥）" : ""}${testedText}｜仅保存在当前浏览器槽位（不写入服务器）`;
   }
 
   function renderBackendSettings() {
@@ -1460,7 +1545,7 @@
     });
 
     document.getElementById("settings-save-bridge").addEventListener("click", () => {
-      saveBridgeConfig({
+      const nextBridgeConfig = {
         enabled: document.getElementById("bridge-enabled").checked,
         endpoint: document.getElementById("bridge-endpoint").value,
         apiKey: document.getElementById("bridge-api-key").value,
@@ -1470,14 +1555,16 @@
         signEnabled: document.getElementById("bridge-sign-enabled").checked,
         clientId: document.getElementById("bridge-client-id").value,
         signVersion: document.getElementById("bridge-sign-version").value
-      });
+      };
+      saveBridgeConfig(nextBridgeConfig);
+      setBridgeConfigForSlot(activeSlot, nextBridgeConfig);
       bridgeConnectivityState = {
         tested: false,
         healthy: false,
         mode: detectBridgeMode(document.getElementById("bridge-endpoint").value)
       };
       renderBridgeSettings();
-      showFlash("中转配置已保存。");
+      showFlash(`中转配置已保存到本地槽位 ${activeSlot}。`);
     });
 
     document.getElementById("settings-test-bridge").addEventListener("click", async () => {
@@ -1537,6 +1624,7 @@
           clientId: document.getElementById("bridge-client-id").value,
           signVersion: document.getElementById("bridge-sign-version").value
         });
+        setBridgeConfigForSlot(activeSlot, bridgeConfig);
         bridgeConnectivityState = { tested: true, healthy: true, mode };
         renderBridgeSettings();
         showFlash(mode === "proxy" ? "中转接口连通性测试成功，当前推理模式已切换。" : "LLM 兼容接口连通性测试成功，当前推理模式已切换。");

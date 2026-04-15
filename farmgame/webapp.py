@@ -681,8 +681,23 @@ def _load_allowed_origins() -> str | list[str]:
 
 
 def _ensure_save_dirs() -> None:
-    WEB_SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    WEB_SLOT_DIR.mkdir(parents=True, exist_ok=True)
+    global SAVE_ROOT, WEB_SAVE_PATH, WEB_SLOT_DIR
+
+    try:
+        WEB_SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        WEB_SLOT_DIR.mkdir(parents=True, exist_ok=True)
+        return
+    except OSError:
+        # Render without a mounted persistent disk may reject /var/data writes.
+        fallback_root = Path("saves").expanduser()
+        fallback_save = fallback_root / "web_save.json"
+        fallback_slots = fallback_root / "web_slots"
+        fallback_save.parent.mkdir(parents=True, exist_ok=True)
+        fallback_slots.mkdir(parents=True, exist_ok=True)
+
+        SAVE_ROOT = fallback_root
+        WEB_SAVE_PATH = fallback_save
+        WEB_SLOT_DIR = fallback_slots
 
 
 def _run_open_mode_play(engine: GameEngine, scene: str, selected_action: str) -> dict[str, object]:
