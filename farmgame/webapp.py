@@ -4,10 +4,15 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime, timezone
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Callable
 
+from flask_cors import CORS
 from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.exceptions import HTTPException
 
 from farmgame.balance import CROPS, ITEMS, LIVESTOCKS, RECIPES, SKILLS
 from farmgame.content import CHARACTERS, TASKS
@@ -15,8 +20,9 @@ from farmgame.engine import GameEngine
 from farmgame.narrative import test_llm_configuration
 from farmgame.storage import load_game, save_game
 
-WEB_SAVE_PATH = Path("saves") / "web_save.json"
-WEB_SLOT_DIR = Path("saves") / "web_slots"
+SAVE_ROOT = Path(os.getenv("ALLRICHAI_SAVE_ROOT", "saves")).expanduser()
+WEB_SAVE_PATH = SAVE_ROOT / "web_save.json"
+WEB_SLOT_DIR = SAVE_ROOT / "web_slots"
 WEB_SLOT_COUNT = 4
 DEFAULT_LLM_CONFIG_PATH = Path("config") / "llm_api.json"
 
@@ -29,6 +35,32 @@ DAY1_PRESETS = [
 
 def create_app() -> Flask:
     app = Flask(__name__)
+    _ensure_save_dirs()
+
+    allowed_origins = _load_allowed_origins()
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": allowed_origins}},
+        methods=["GET", "POST", "OPTIONS"],
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "X-TF-Timestamp",
+            "X-TF-Nonce",
+            "X-TF-Signature",
+            "X-TF-Client-Id",
+            "X-TF-Sign-Version",
+        ],
+        max_age=3600,
+    )
+
+    limiter = Limiter(
+        key_func=get_remote_address,
+        app=app,
+        default_limits=[],
+        storage_uri=os.getenv("ALLRICHAI_RATE_LIMIT_STORAGE", "memory://"),
+        enabled=os.getenv("ALLRICHAI_RATE_LIMIT_ENABLED", "1") == "1",
+    )
     asset_version = str(int(datetime.now(timezone.utc).timestamp()))
     app.config["ASSET_VERSION"] = asset_version
 
@@ -119,6 +151,7 @@ def create_app() -> Flask:
 
     # ========== 可视化融合专用 JSON API Start ==========
     @app.get("/api/viz/state")
+    @limiter.limit("240/minute")
     def api_viz_state():
         engine = _load_engine()
         return jsonify(
@@ -129,6 +162,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/viz/action")
+    @limiter.limit("120/minute")
     def api_viz_action():
         data = request.get_json(silent=True) or {}
         action_name = str(data.get("action", "")).strip()
@@ -149,6 +183,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/viz/slot/save")
+    @limiter.limit("60/minute")
     def api_viz_slot_save():
         data = request.get_json(silent=True) or {}
         slot = _to_int(data.get("slot", 1), 1)
@@ -164,6 +199,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/viz/slot/load")
+    @limiter.limit("60/minute")
     def api_viz_slot_load():
         data = request.get_json(silent=True) or {}
         slot = _to_int(data.get("slot", 1), 1)
@@ -180,6 +216,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/viz/slot/delete")
+    @limiter.limit("30/minute")
     def api_viz_slot_delete():
         data = request.get_json(silent=True) or {}
         slot = _to_int(data.get("slot", 1), 1)
@@ -202,6 +239,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/viz/open/suggest")
+    @limiter.limit("60/minute")
     def api_viz_open_suggest():
         data = request.get_json(silent=True) or {}
         scene = str(data.get("scene", "刘家村村口"))
@@ -220,6 +258,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/viz/open/play")
+    @limiter.limit("60/minute")
     def api_viz_open_play():
         data = request.get_json(silent=True) or {}
         scene = str(data.get("scene", "刘家村村口"))
@@ -238,6 +277,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/viz/story/dialog")
+    @limiter.limit("60/minute")
     def api_viz_story_dialog():
         data = request.get_json(silent=True) or {}
         chapter_id = str(data.get("chapter_id", "v1c1")).strip() or "v1c1"
@@ -253,6 +293,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/viz/story/choice")
+    @limiter.limit("60/minute")
     def api_viz_story_choice():
         data = request.get_json(silent=True) or {}
         chapter_id = str(data.get("chapter_id", "v1c1")).strip() or "v1c1"
@@ -260,6 +301,83 @@ def create_app() -> Flask:
         engine = _load_engine()
         result = _run_story_choice(engine, chapter_id, choice_text)
         return jsonify({"ok": True, "success": True, **result, "state": _build_viz_state_payload(engine)})
+
+    @app.post("/api/viz/profile/update")
+    @limiter.limit("30/minute")
+    def api_viz_profile_update():
+        data = request.get_json(silent=True) or {}
+        engine = _load_engine()
+        message = engine.update_player_profile(
+            str(data.get("player_name", "")),
+            str(data.get("player_identity", "")),
+            str(data.get("player_return_reason", "")),
+        )
+        save_game(engine.state, WEB_SAVE_PATH)
+        return jsonify(
+            {
+                "ok": True,
+                "success": True,
+                "message": message,
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/new-game")
+    @limiter.limit("20/minute")
+    def api_viz_new_game():
+        engine = GameEngine()
+        save_game(engine.state, WEB_SAVE_PATH)
+        return jsonify(
+            {
+                "ok": True,
+                "success": True,
+                "message": "已重置为新开局。",
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/balance/apply")
+    @limiter.limit("30/minute")
+    def api_viz_balance_apply():
+        data = request.get_json(silent=True) or {}
+        engine = _load_engine()
+        message = engine.apply_balance_config(
+            wage_per_employee=_to_int(data.get("wage_per_employee", 80), 80),
+            dividend_rate_percent=float(data.get("dividend_rate_percent", 10)),
+            processing_fee_multiplier=float(data.get("processing_fee_multiplier", 1.0)),
+            processing_output_multiplier=float(data.get("processing_output_multiplier", 1.0)),
+            order_reward_multiplier=float(data.get("order_reward_multiplier", 1.0)),
+        )
+        save_game(engine.state, WEB_SAVE_PATH)
+        return jsonify(
+            {
+                "ok": True,
+                "success": True,
+                "message": message,
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/balance/replay")
+    @limiter.limit("30/minute")
+    def api_viz_balance_replay():
+        data = request.get_json(silent=True) or {}
+        engine = _load_engine()
+        replay = engine.simulate_projection(_to_int(data.get("days", 7), 7))
+        replay_text = (
+            f"未来 {replay['days']} 天预测：资金变化 {replay['money_delta']}，"
+            f"共富变化 {replay['prosperity_delta']}，源能变化 {replay['energy_delta']}，"
+            f"预计雇员 {replay['employees']}。"
+        )
+        return jsonify(
+            {
+                "ok": True,
+                "success": True,
+                "message": replay_text,
+                "replay": replay,
+                "state": _build_viz_state_payload(engine),
+            }
+        )
 
     # ========== 可视化融合专用 JSON API End ==========
 
@@ -276,6 +394,7 @@ def create_app() -> Flask:
         )
 
     @app.post("/api/story/execute-command")
+    @limiter.limit("60/minute")
     def api_execute_command():
         """执行当前指令并返回结果"""
         try:
@@ -349,6 +468,7 @@ def create_app() -> Flask:
             }), 500
 
     @app.get("/api/story/panel-state")
+    @limiter.limit("180/minute")
     def api_panel_state():
         """获取当前全部面板数据"""
         try:
@@ -406,6 +526,7 @@ def create_app() -> Flask:
         return redirect(url_for("balance_page", replay_result=replay_text))
 
     @app.post("/api/open-mode/play")
+    @limiter.limit("60/minute")
     def api_open_mode_play():
         engine = _load_engine()
         if not engine.state.open_mode.profile_saved:
@@ -416,6 +537,7 @@ def create_app() -> Flask:
         return jsonify({"ok": True, **result})
 
     @app.post("/action")
+    @limiter.limit("120/minute")
     def action():
         engine = _load_engine()
         action_name = request.form.get("action", "")
@@ -508,11 +630,59 @@ def create_app() -> Flask:
     _ = balance_page
     _ = balance_apply
     _ = balance_replay
+
+    @app.errorhandler(404)
+    def handle_not_found(_: Exception):
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "success": False, "message": "接口不存在。"}), HTTPStatus.NOT_FOUND
+        return "Not Found", HTTPStatus.NOT_FOUND
+
+    @app.errorhandler(429)
+    def handle_rate_limited(_: Exception):
+        if request.path.startswith("/api/"):
+            return (
+                jsonify({"ok": False, "success": False, "message": "请求过于频繁，请稍后再试。"}),
+                HTTPStatus.TOO_MANY_REQUESTS,
+            )
+        return "Too Many Requests", HTTPStatus.TOO_MANY_REQUESTS
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(error: Exception):
+        if isinstance(error, HTTPException):
+            status = error.code or HTTPStatus.INTERNAL_SERVER_ERROR
+            if request.path.startswith("/api/"):
+                return (
+                    jsonify({"ok": False, "success": False, "message": error.description or "请求失败。"}),
+                    status,
+                )
+            return error
+
+        app.logger.exception("Unhandled exception on %s", request.path)
+        if request.path.startswith("/api/"):
+            return (
+                jsonify({"ok": False, "success": False, "message": "服务器内部错误。"}),
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+        return "Internal Server Error", HTTPStatus.INTERNAL_SERVER_ERROR
+
     return app
 
 
 def _load_engine() -> GameEngine:
     return GameEngine(load_game(WEB_SAVE_PATH))
+
+
+def _load_allowed_origins() -> str | list[str]:
+    raw = os.getenv("ALLRICHAI_ALLOWED_ORIGINS", "*").strip()
+    if not raw or raw == "*":
+        return "*"
+    origins = [item.strip() for item in raw.split(",") if item.strip()]
+    return origins or "*"
+
+
+def _ensure_save_dirs() -> None:
+    WEB_SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    WEB_SLOT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _run_open_mode_play(engine: GameEngine, scene: str, selected_action: str) -> dict[str, object]:
@@ -819,6 +989,7 @@ def _build_viz_state_payload(engine: GameEngine) -> dict[str, Any]:
         )
 
     return {
+        "raw_state": engine.state.to_dict(),
         "money": int(snapshot.get("money", 0)),
         "particles": int(snapshot.get("particles", 0)),
         "land": float(snapshot.get("land", 0.0)),

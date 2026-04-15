@@ -264,6 +264,7 @@ class WebAppTests(unittest.TestCase):
         self.assertTrue(state_payload.get("ok", False))
         self.assertIn("state", state_payload)
         self.assertIn("snapshot", state_payload.get("state", {}))
+        self.assertIn("raw_state", state_payload.get("state", {}))
 
         bad_action = client.post("/api/viz/action", json={"action": "unsupported_action", "params": {}})
         self.assertEqual(bad_action.status_code, 200)
@@ -328,6 +329,63 @@ class WebAppTests(unittest.TestCase):
         delete_slot_resp = client.post("/api/viz/slot/delete", json={"slot": 1})
         self.assertEqual(delete_slot_resp.status_code, 200)
         self.assertTrue((delete_slot_resp.get_json() or {}).get("ok", False))
+
+        profile_resp = client.post(
+            "/api/viz/profile/update",
+            json={
+                "player_name": "刘洋",
+                "player_identity": "返乡青年",
+                "player_return_reason": "回村重建生活",
+            },
+        )
+        self.assertEqual(profile_resp.status_code, 200)
+        profile_payload = profile_resp.get_json() or {}
+        self.assertTrue(profile_payload.get("ok", False))
+        self.assertIn("state", profile_payload)
+        self.assertIn("raw_state", profile_payload.get("state", {}))
+
+        new_game_resp = client.post("/api/viz/new-game", json={})
+        self.assertEqual(new_game_resp.status_code, 200)
+        self.assertTrue((new_game_resp.get_json() or {}).get("ok", False))
+
+        balance_apply_resp = client.post(
+            "/api/viz/balance/apply",
+            json={
+                "wage_per_employee": 90,
+                "dividend_rate_percent": 12,
+                "processing_fee_multiplier": 1.0,
+                "processing_output_multiplier": 1.1,
+                "order_reward_multiplier": 1.0,
+            },
+        )
+        self.assertEqual(balance_apply_resp.status_code, 200)
+        self.assertTrue((balance_apply_resp.get_json() or {}).get("ok", False))
+
+        balance_replay_resp = client.post("/api/viz/balance/replay", json={"days": 7})
+        self.assertEqual(balance_replay_resp.status_code, 200)
+        replay_payload = balance_replay_resp.get_json() or {}
+        self.assertTrue(replay_payload.get("ok", False))
+        self.assertIn("replay", replay_payload)
+
+    def test_api_viz_cors_preflight_headers(self) -> None:
+        from farmgame.webapp import create_app
+
+        app = create_app()
+        app.testing = True
+        client = app.test_client()
+
+        response = client.open(
+            "/api/viz/action",
+            method="OPTIONS",
+            headers={
+                "Origin": "https://your-app.funloom.com",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "https://your-app.funloom.com")
+        self.assertIn("POST", str(response.headers.get("Access-Control-Allow-Methods", "")))
 
 
 if __name__ == "__main__":

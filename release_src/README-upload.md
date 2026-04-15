@@ -13,10 +13,10 @@
 
 ## 说明
 
-- 本版本为“引擎版静态发布”，不依赖 Python/Flask 后端。
-- `assets/engine.js` 提供浏览器侧经营引擎，负责状态、规则、日结算、任务、订单、公司、技能与合作系统。
-- `assets/app.js` 负责页面渲染、交互绑定、槽位存档和中转接口调用。
-- 存档使用浏览器 `localStorage`，支持当前进度与多槽位。
+- 本版本已切换为“前后端统一链路”：前端负责 UI，业务状态与规则结算统一走 Render 后端 API。
+- `assets/engine.js` 仅用于前端状态结构与渲染适配，服务端返回 `raw_state` 后由前端回填显示。
+- `assets/app.js` 与 `assets/static-viz.js` 负责页面渲染、交互绑定与 API 调用。
+- 存档使用后端槽位 API（`/api/viz/slot/*`），不再以浏览器 `localStorage` 作为状态真源。
 
 可直接体验的主要系统：
 
@@ -33,8 +33,8 @@
 	- model（可选）：传给中转服务
 	- timeout：前端请求超时
 - 运行逻辑：
-	- 启用且请求成功：使用中转返回文本与效果，并接入前端经营引擎统一结算
-	- 请求失败：自动回退到本地前端引擎的开放玩法文本与规则结算，不中断玩法
+	- 启用且请求成功：用于可选的远端推理增强
+	- 核心经营状态仍以 Render 后端接口为准
 - 签名字段预留（可选开关）：
 	- payload.security: `timestamp`、`nonce`、`signature`（占位）
 	- headers: `X-TF-Timestamp`、`X-TF-Nonce`、`X-TF-Signature`
@@ -44,7 +44,8 @@
 
 - ZIP 根目录直接包含 `index.html`
 - `assets/engine.js` 与 `assets/app.js` 都已存在
-- 如需开放玩法远端推理，目标平台需允许浏览器跨域访问你的中转服务
+- 设置页已配置后端 API 基地址（Render URL）
+- Render 已配置 `ALLRICHAI_ALLOWED_ORIGINS`，允许 funloom 域名跨域访问
 
 建议中转响应（JSON）格式：
 

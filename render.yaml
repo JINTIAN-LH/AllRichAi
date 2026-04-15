@@ -4,10 +4,20 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python run_web.py
+    startCommand: python -m gunicorn --workers=2 --threads=4 --timeout=120 --bind=0.0.0.0:$PORT run_web:app
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
+      - key: FLASK_ENV
+        value: production
       - key: ALLRICHAI_WEB_HOST
         value: 0.0.0.0
+      - key: ALLRICHAI_ALLOWED_ORIGINS
+        value: https://your-app.funloom.com
+      - key: ALLRICHAI_RATE_LIMIT_ENABLED
+        value: "1"
+      - key: ALLRICHAI_RATE_LIMIT_STORAGE
+        value: memory://
+      - key: ALLRICHAI_SAVE_ROOT
+        value: /var/data/allrichai/saves

@@ -1,7 +1,7 @@
 ﻿(function () {
   const STORAGE_KEY = "tf_static_state_v2";
   const LEGACY_STORAGE_KEY = "tf_static_state_v1";
-  const SLOT_PREFIX = "tf_static_slot_";
+  const BACKEND_KEY = "tf_backend_config_v1";
   const BRIDGE_KEY = "tf_static_bridge_v1";
   const DEFAULT_GOAL = "低压力推进经营并保持家庭关系稳定";
   const PROFILE_MODAL_ID = "modal-profile-setup";
@@ -25,15 +25,13 @@
   const stateSubscribers = new Set();
 
   let engine = loadEngine();
+  let backendConfig = loadBackendConfig();
+  let serverSlots = [];
   let bridgeConfig = loadBridgeConfig();
   let activePage = "home";
   let profilePromptShown = false;
   let flashMuted = false;
   let bridgeConnectivityState = { tested: false, healthy: false, mode: "proxy" };
-
-  if (engine.state.open_mode.profile_saved && !engine.state.open_mode.last_options.length) {
-    engine.openModeOptions(getSceneForTurn(), DEFAULT_GOAL);
-  }
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -51,6 +49,32 @@
       clientId: "",
       signVersion: "v1"
     };
+  }
+
+  function defaultBackendConfig() {
+    return {
+      baseUrl: ""
+    };
+  }
+
+  function loadBackendConfig() {
+    try {
+      const raw = localStorage.getItem(BACKEND_KEY);
+      if (!raw) return defaultBackendConfig();
+      const parsed = JSON.parse(raw);
+      return {
+        baseUrl: String(parsed.baseUrl || "").trim().replace(/\/+$/, "")
+      };
+    } catch (_) {
+      return defaultBackendConfig();
+    }
+  }
+
+  function saveBackendConfig(nextConfig) {
+    backendConfig = {
+      baseUrl: String(nextConfig.baseUrl || "").trim().replace(/\/+$/, "")
+    };
+    localStorage.setItem(BACKEND_KEY, JSON.stringify(backendConfig));
   }
 
   function loadBridgeConfig() {
@@ -90,16 +114,28 @@
   }
 
   function loadEngine() {
-    const candidates = [STORAGE_KEY, LEGACY_STORAGE_KEY];
-    for (const key of candidates) {
-      try {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-        return new StaticGameEngine(JSON.parse(raw));
-      } catch (_) {
-      }
-    }
+    // Unified mode: server is the source of truth, local engine is only a temporary shell until first sync.
     return StaticGameEngine.newGame();
+  }
+
+  function backendUrl(path) {
+    const base = String(backendConfig.baseUrl || "").trim().replace(/\/+$/, "");
+    return `${base}${path}`;
+  }
+
+  async function apiRequest(path, options = {}) {
+    const response = await fetch(backendUrl(path), {
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      },
+      ...options
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((data && (data.message || data.error)) || `HTTP ${response.status}`);
+    }
+    return data;
   }
 
   function getSceneForTurn() {
@@ -473,11 +509,54 @@
   }
 
   function persistState(flashMessage) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(engine.state));
     renderAll();
     maybePromptProfile();
     if (flashMessage) showFlash(flashMessage);
     notifyStateSubscribers();
+  }
+
+  function hydrateEngineFromApiPayload(payload, flashMessage) {
+    const statePayload = payload && payload.state && payload.state.raw_state
+      ? payload.state.raw_state
+      : (payload && payload.raw_state ? payload.raw_state : null);
+    if (statePayload) {
+      engine = new StaticGameEngine(statePayload);
+      profilePromptShown = !!(engine.state && engine.state.open_mode && engine.state.open_mode.profile_saved);
+    }
+    if (payload && payload.state && Array.isArray(payload.state.save_slots)) {
+      serverSlots = payload.state.save_slots.slice();
+    }
+    persistState(flashMessage || payload && payload.message || "");
+    return payload;
+  }
+
+  async function syncFromBackend(flashMessage) {
+    const data = await apiRequest("/api/viz/state", { method: "GET" });
+    return hydrateEngineFromApiPayload(data, flashMessage);
+  }
+
+  async function runVizAction(action, params = {}, flashMessage) {
+    const before = snapshotForDiff();
+    const data = await apiRequest("/api/viz/action", {
+      method: "POST",
+      body: JSON.stringify({ action, params })
+    });
+    hydrateEngineFromApiPayload(data, flashMessage);
+    const after = snapshotForDiff();
+    const changes = diffSnapshots(before, after);
+    if (activePage === "story" && changes.length) {
+      displayResult(data.message || "操作完成。", changes);
+    }
+    return data;
+  }
+
+  async function runSlotAction(op, slot) {
+    const data = await apiRequest(`/api/viz/slot/${op}`, {
+      method: "POST",
+      body: JSON.stringify({ slot })
+    });
+    hydrateEngineFromApiPayload(data, data.message || `槽位 ${slot} 操作完成`);
+    return data;
   }
 
   function notifyStateSubscribers() {
@@ -509,18 +588,6 @@
     profilePromptShown = !!(engine.state && engine.state.open_mode && engine.state.open_mode.profile_saved);
     persistState(flashMessage);
     return engine;
-  }
-
-  function withEngine(action) {
-    const before = snapshotForDiff();
-    const message = action();
-    const after = snapshotForDiff();
-    const changes = diffSnapshots(before, after);
-    persistState();
-    if (activePage === "story" && changes.length) {
-      displayResult(message, changes);
-    }
-    return message;
   }
 
   function setText(id, value) {
@@ -607,6 +674,15 @@
       ? (bridgeConnectivityState.healthy ? "，已连通" : "，待重测")
       : "，未测试";
     status.textContent = `当前推理模式：${modeText}${bridgeConfig.apiKey ? "（含密钥）" : ""}${testedText}`;
+  }
+
+  function renderBackendSettings() {
+    const baseInput = document.getElementById("backend-base-url");
+    const status = document.getElementById("backend-status");
+    if (!baseInput || !status) return;
+    baseInput.value = backendConfig.baseUrl || "";
+    const target = backendConfig.baseUrl || window.location.origin;
+    status.textContent = `当前后端：${target}`;
   }
 
   function populateSelect(select, items, getLabel) {
@@ -816,10 +892,23 @@
         button.type = "button";
         button.className = "preset-btn";
         button.textContent = preset.name;
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => {
           const [wage, dividend, fee, output, reward] = preset.values;
-          const message = engine.applyBalanceConfig(wage, dividend, fee, output, reward);
-          persistState(message);
+          try {
+            const data = await apiRequest("/api/viz/balance/apply", {
+              method: "POST",
+              body: JSON.stringify({
+                wage_per_employee: Number(wage),
+                dividend_rate_percent: Number(dividend),
+                processing_fee_multiplier: Number(fee),
+                processing_output_multiplier: Number(output),
+                order_reward_multiplier: Number(reward)
+              })
+            });
+            hydrateEngineFromApiPayload(data, data.message || "已应用平衡参数。");
+          } catch (error) {
+            showFlash(`应用失败：${error && error.message ? error.message : "未知错误"}`);
+          }
         });
         presetRow.appendChild(button);
       });
@@ -912,7 +1001,13 @@
       const button = document.createElement("button");
       button.type = "button";
       button.textContent = `互动：${gameData.CHARACTERS[characterId].name}`;
-      button.addEventListener("click", () => withEngine(() => engine.interact(characterId)));
+      button.addEventListener("click", async () => {
+        try {
+          await runVizAction("interact", { character_id: characterId });
+        } catch (error) {
+          showFlash(`操作失败：${error && error.message ? error.message : "未知错误"}`);
+        }
+      });
       actions.appendChild(button);
     });
   }
@@ -942,7 +1037,13 @@
       button.type = "button";
       button.textContent = canUnlock ? `解锁：${entry.definition.name}` : `未满足：${entry.definition.name}`;
       button.disabled = !canUnlock;
-      button.addEventListener("click", () => withEngine(() => engine.unlockSkill(entry.skill_id)));
+      button.addEventListener("click", async () => {
+        try {
+          await runVizAction("unlock_skill", { skill_id: entry.skill_id });
+        } catch (error) {
+          showFlash(`操作失败：${error && error.message ? error.message : "未知错误"}`);
+        }
+      });
       actions.appendChild(button);
     });
   }
@@ -962,7 +1063,13 @@
       const button = document.createElement("button");
       button.type = "button";
       button.textContent = labels[key];
-      button.addEventListener("click", () => withEngine(() => engine.advancePartnership(key, 30)));
+      button.addEventListener("click", async () => {
+        try {
+          await runVizAction("advance_partnership", { partner_type: key });
+        } catch (error) {
+          showFlash(`操作失败：${error && error.message ? error.message : "未知错误"}`);
+        }
+      });
       actions.appendChild(button);
     });
   }
@@ -982,7 +1089,7 @@
     }
     if (optionsRoot) {
       const options = engine.state.open_mode.profile_saved
-        ? (engine.state.open_mode.last_options.length ? engine.state.open_mode.last_options : engine.openModeOptions(getSceneForTurn(), DEFAULT_GOAL))
+        ? (engine.state.open_mode.last_options.length ? engine.state.open_mode.last_options : ["点击“重新生成行动建议”获取后端推理结果。"])
         : ["请先完成主角设定，再生成行动建议。"];
       optionsRoot.innerHTML = "";
       options.forEach((optionText) => {
@@ -1021,37 +1128,38 @@
     const slotList = document.getElementById("slot-list");
     if (!slotList) return;
     slotList.innerHTML = "";
-    for (let i = 1; i <= 4; i += 1) {
-      const key = SLOT_PREFIX + i;
-      const exists = !!localStorage.getItem(key);
+    const slots = serverSlots.length
+      ? serverSlots.slice().sort((a, b) => Number(a.slot || 0) - Number(b.slot || 0))
+      : Array.from({ length: 4 }, (_, idx) => ({ slot: idx + 1, exists: false }));
+
+    slots.forEach((slotInfo) => {
+      const i = Number(slotInfo.slot || 1);
+      const exists = !!slotInfo.exists;
       const item = document.createElement("li");
       item.innerHTML = `<div class="slot-row"><span>槽位 ${i} ${exists ? "已占用" : "空"}</span><div class="slot-actions"></div></div>`;
       const actions = item.querySelector(".slot-actions");
 
       [
-        ["存", () => {
-          localStorage.setItem(key, JSON.stringify(engine.state));
-          showFlash(`已保存到槽位 ${i}`);
-          renderSlots();
-        }],
-        ["读", () => {
-          const raw = localStorage.getItem(key);
-          if (!raw) {
-            showFlash(`槽位 ${i} 为空。`);
-            return;
-          }
+        ["存", async () => {
           try {
-            engine = new StaticGameEngine(JSON.parse(raw));
-            profilePromptShown = engine.state.open_mode.profile_saved;
-            persistState(`已读取槽位 ${i}`);
-          } catch (_) {
-            showFlash("读取失败，存档已损坏。");
+            await runSlotAction("save", i);
+          } catch (error) {
+            showFlash(`保存失败：${error && error.message ? error.message : "未知错误"}`);
           }
         }],
-        ["删", () => {
-          localStorage.removeItem(key);
-          showFlash(`已删除槽位 ${i}`);
-          renderSlots();
+        ["读", async () => {
+          try {
+            await runSlotAction("load", i);
+          } catch (error) {
+            showFlash(`读取失败：${error && error.message ? error.message : "未知错误"}`);
+          }
+        }],
+        ["删", async () => {
+          try {
+            await runSlotAction("delete", i);
+          } catch (error) {
+            showFlash(`删除失败：${error && error.message ? error.message : "未知错误"}`);
+          }
         }]
       ].forEach(([label, handler]) => {
         const button = document.createElement("button");
@@ -1062,7 +1170,7 @@
       });
 
       slotList.appendChild(item);
-    }
+    });
   }
 
   function renderAll() {
@@ -1081,6 +1189,7 @@
     renderPartnershipModal();
     renderOpenModal();
     renderProfileModal();
+    renderBackendSettings();
     renderBridgeSettings();
     renderSlots();
     showPage(activePage);
@@ -1114,21 +1223,17 @@
     if (loading) loading.hidden = false;
     showLoading(true);
     try {
-      let result = "";
-      if (bridgeConfig.enabled && bridgeConfig.endpoint) {
-        try {
-          result = await resolveOpenActionRemote(actionText);
-        } catch (_) {
-          engine.addLog("中转接口不可用，已自动回退规则文本。");
-          showFlash("中转接口不可用，已回退本地规则推演。");
-        }
-      }
-      if (!result) {
-        result = engine.resolveOpenActionLocal(getSceneForTurn(), actionText);
-      }
-      engine.state.last_story_result = result;
-      persistState();
+      const data = await apiRequest("/api/viz/open/play", {
+        method: "POST",
+        body: JSON.stringify({
+          scene: getSceneForTurn(),
+          open_action: actionText
+        })
+      });
+      hydrateEngineFromApiPayload(data);
+      const result = String(data.message || "推演完成");
       setText("open-result", result);
+      setText("open-stat-delta", String(data.stat_delta || ""));
       displayResult(result, []);
     } finally {
       if (loading) loading.hidden = true;
@@ -1139,16 +1244,22 @@
   function executeStoryCommand(commandText) {
     const before = snapshotForDiff();
     showLoading(true);
-    try {
-      const result = engine.playPanelModeAction(getSceneForTurn(), commandText);
-      engine.state.last_story_result = result;
-      const after = snapshotForDiff();
-      const changes = diffSnapshots(before, after);
-      persistState();
-      displayResult(result, changes);
-    } finally {
-      showLoading(false);
-    }
+    apiRequest("/api/story/execute-command", {
+      method: "POST",
+      body: JSON.stringify({ command: commandText })
+    })
+      .then(async (data) => {
+        await syncFromBackend();
+        const after = snapshotForDiff();
+        const changes = diffSnapshots(before, after);
+        displayResult(String(data.result_text || "指令执行完成。"), changes);
+      })
+      .catch((error) => {
+        showFlash(`执行失败：${error && error.message ? error.message : "未知错误"}`);
+      })
+      .finally(() => {
+        showLoading(false);
+      });
   }
 
   function displayResult(text, changes) {
@@ -1178,17 +1289,13 @@
     const goal = engine.state.open_mode.last_goal || DEFAULT_GOAL;
     showLoading(true);
     try {
-      if (bridgeConfig.enabled && bridgeConfig.endpoint) {
-        await generateRemoteOpenOptions(scene, goal);
-        persistState("已通过远程推理刷新行动建议。");
-      } else {
-        engine.openModeOptions(scene, goal);
-        persistState("已刷新行动建议。");
-      }
+      const data = await apiRequest("/api/viz/open/suggest", {
+        method: "POST",
+        body: JSON.stringify({ scene, goal })
+      });
+      hydrateEngineFromApiPayload(data, "已刷新行动建议。");
     } catch (error) {
-      engine.openModeOptions(scene, goal);
-      persistState();
-      showFlash(`远程生成建议失败，已回退本地规则：${error && error.message ? error.message : "未知错误"}`);
+      showFlash(`刷新建议失败：${error && error.message ? error.message : "未知错误"}`);
     } finally {
       showLoading(false);
     }
@@ -1220,30 +1327,33 @@
       document.getElementById("result-panel").classList.remove("active");
     });
 
-    document.getElementById("btn-new-game").addEventListener("click", () => {
-      engine = StaticGameEngine.newGame();
-      profilePromptShown = false;
+    document.getElementById("btn-new-game").addEventListener("click", async () => {
+      const data = await apiRequest("/api/viz/new-game", { method: "POST" });
       document.getElementById("projection-text").textContent = "";
-      persistState("已重置为新开局。");
+      hydrateEngineFromApiPayload(data, "已重置为新开局。");
     });
-    document.getElementById("btn-save-game").addEventListener("click", () => persistState("当前进度已保存。"));
-    document.getElementById("settings-new-game").addEventListener("click", () => {
-      engine = StaticGameEngine.newGame();
-      profilePromptShown = false;
+    document.getElementById("btn-save-game").addEventListener("click", async () => {
+      await runSlotAction("save", 1);
+    });
+    document.getElementById("settings-new-game").addEventListener("click", async () => {
+      const data = await apiRequest("/api/viz/new-game", { method: "POST" });
       document.getElementById("projection-text").textContent = "";
       closeDialog(SETTINGS_MODAL_ID);
-      persistState("已重置为新开局。");
+      hydrateEngineFromApiPayload(data, "已重置为新开局。");
     });
-    document.getElementById("settings-save-game").addEventListener("click", () => persistState("当前进度已保存。"));
+    document.getElementById("settings-save-game").addEventListener("click", async () => {
+      await runSlotAction("save", 1);
+    });
 
     document.querySelectorAll("[data-action]").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
         const action = button.getAttribute("data-action");
-        if (action === "harvest") return withEngine(() => engine.harvestAll());
-        if (action === "collect") return withEngine(() => engine.collectLivestockProducts());
-        if (action === "sell_market") return withEngine(() => engine.sellInventory("market"));
-        if (action === "sell_stream") return withEngine(() => engine.sellInventory("stream"));
-        if (action === "advance_day") return withEngine(() => engine.advanceDay());
+        if (!action) return;
+        try {
+          await runVizAction(action, {});
+        } catch (error) {
+          showFlash(`操作失败：${error && error.message ? error.message : "未知错误"}`);
+        }
       });
     });
 
@@ -1254,38 +1364,38 @@
       button.addEventListener("click", () => closeDialog(button.closest("dialog").id));
     });
 
-    document.getElementById("farm-form").addEventListener("submit", (event) => {
+    document.getElementById("farm-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
-      withEngine(() => engine.plantCrop(Number(form.plotId.value), form.cropId.value));
+      await runVizAction("plant", { plot_id: Number(form.plotId.value), crop_id: form.cropId.value });
     });
-    document.getElementById("ranch-form").addEventListener("submit", (event) => {
+    document.getElementById("ranch-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
-      withEngine(() => engine.raiseLivestock(Number(form.penId.value), form.livestockId.value));
+      await runVizAction("raise_livestock", { pen_id: Number(form.penId.value), livestock_id: form.livestockId.value });
     });
-    document.getElementById("process-form").addEventListener("submit", (event) => {
+    document.getElementById("process-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
-      withEngine(() => engine.processGoods(form.recipeId.value, Number(form.batches.value || 1)));
+      await runVizAction("process", { recipe_id: form.recipeId.value, batches: Number(form.batches.value || 1) });
     });
-    document.getElementById("order-form").addEventListener("submit", (event) => {
+    document.getElementById("order-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
-      withEngine(() => engine.fulfillOrder(form.orderId.value || ""));
+      await runVizAction("fulfill_order", { order_id: form.orderId.value || "" });
     });
 
     document.querySelectorAll("[data-company]").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
         const type = button.getAttribute("data-company");
-        if (type === "prepare") return withEngine(() => engine.prepareCompany());
-        if (type === "hire") return withEngine(() => engine.hireVillagers(1));
-        if (type === "dividend") return withEngine(() => engine.distributeDividends());
+        if (type === "prepare") return runVizAction("prepare_company", {});
+        if (type === "hire") return runVizAction("hire", { count: 1 });
+        if (type === "dividend") return runVizAction("dividends", {});
       });
     });
 
-    document.getElementById("btn-expand-ranch").addEventListener("click", () => withEngine(() => engine.expandRanch(1)));
-    document.getElementById("btn-upgrade-workshop").addEventListener("click", () => withEngine(() => engine.upgradeWorkshop()));
+    document.getElementById("btn-expand-ranch").addEventListener("click", async () => runVizAction("expand_ranch", { blocks: 1 }));
+    document.getElementById("btn-upgrade-workshop").addEventListener("click", async () => runVizAction("upgrade_workshop", {}));
 
     document.getElementById("story-custom-submit").addEventListener("click", () => {
       const input = document.getElementById("story-custom-input");
@@ -1316,18 +1426,37 @@
       event.preventDefault();
       if (engine.state.open_mode.profile_saved) return;
       const form = event.currentTarget;
-      const message = engine.updatePlayerProfile(form.playerName.value, form.playerIdentity.value, form.playerReturnReason.value);
-      if (bridgeConfig.enabled && bridgeConfig.endpoint) {
-        try {
-          await generateRemoteOpenOptions(getSceneForTurn(), DEFAULT_GOAL);
-        } catch (_) {
-          engine.openModeOptions(getSceneForTurn(), DEFAULT_GOAL);
-        }
-      } else {
-        engine.openModeOptions(getSceneForTurn(), DEFAULT_GOAL);
-      }
+      const data = await apiRequest("/api/viz/profile/update", {
+        method: "POST",
+        body: JSON.stringify({
+          player_name: form.playerName.value,
+          player_identity: form.playerIdentity.value,
+          player_return_reason: form.playerReturnReason.value
+        })
+      });
+      hydrateEngineFromApiPayload(data);
+      await refreshOpenOptions();
       closeDialog(PROFILE_MODAL_ID);
-      persistState(message);
+      persistState(data.message || "主角设定已保存");
+    });
+
+    document.getElementById("settings-save-backend").addEventListener("click", async () => {
+      const base = String(document.getElementById("backend-base-url").value || "").trim();
+      saveBackendConfig({ baseUrl: base });
+      renderBackendSettings();
+      try {
+        await syncFromBackend("后端地址已保存并同步状态。");
+      } catch (error) {
+        showFlash(`后端连通失败：${error && error.message ? error.message : "未知错误"}`);
+      }
+    });
+
+    document.getElementById("settings-test-backend").addEventListener("click", async () => {
+      try {
+        await syncFromBackend("后端连通性测试成功。");
+      } catch (error) {
+        showFlash(`后端连通性测试失败：${error && error.message ? error.message : "未知错误"}`);
+      }
     });
 
     document.getElementById("settings-save-bridge").addEventListener("click", () => {
@@ -1423,21 +1552,28 @@
       }
     });
 
-    document.getElementById("balance-form").addEventListener("submit", (event) => {
+    document.getElementById("balance-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
-      const message = engine.applyBalanceConfig(
-        Number(form.wagePerEmployee.value || 80),
-        Number(form.dividendRate.value || 10),
-        Number(form.processingFeeMultiplier.value || 1),
-        Number(form.processingOutputMultiplier.value || 1),
-        Number(form.orderRewardMultiplier.value || 1)
-      );
-      persistState(message);
+      const data = await apiRequest("/api/viz/balance/apply", {
+        method: "POST",
+        body: JSON.stringify({
+          wage_per_employee: Number(form.wagePerEmployee.value || 80),
+          dividend_rate_percent: Number(form.dividendRate.value || 10),
+          processing_fee_multiplier: Number(form.processingFeeMultiplier.value || 1),
+          processing_output_multiplier: Number(form.processingOutputMultiplier.value || 1),
+          order_reward_multiplier: Number(form.orderRewardMultiplier.value || 1)
+        })
+      });
+      hydrateEngineFromApiPayload(data, data.message || "已应用平衡参数。");
     });
 
-    document.getElementById("btn-projection").addEventListener("click", () => {
-      const projection = engine.simulateProjection(7);
+    document.getElementById("btn-projection").addEventListener("click", async () => {
+      const data = await apiRequest("/api/viz/balance/replay", {
+        method: "POST",
+        body: JSON.stringify({ days: 7 })
+      });
+      const projection = data.replay || { days: 7, money_delta: 0, prosperity_delta: 0, energy_delta: 0, employees: 0 };
       setText(
         "projection-text",
         `预测未来 ${projection.days} 天：资金 ${formatSigned(projection.money_delta)}，共富 ${formatSigned(projection.prosperity_delta)}，源能 ${formatSigned(projection.energy_delta)}，预计雇员 ${projection.employees}。`
@@ -1461,6 +1597,10 @@
       return engine;
     },
     replaceEngine,
+    runVizAction,
+    runSlotAction,
+    syncFromBackend,
+    apiRequest,
     showPage,
     showFlash,
     openDialog,
@@ -1469,5 +1609,11 @@
 
   bindEvents();
   renderAll();
-  maybePromptProfile();
+  syncFromBackend()
+    .catch((error) => {
+      showFlash(`后端同步失败，当前使用本地展示状态：${error && error.message ? error.message : "未知错误"}`);
+    })
+    .finally(() => {
+      maybePromptProfile();
+    });
 })();

@@ -628,11 +628,23 @@
 
       <h4>LLM 中转接口</h4>
       <div class="bridge-settings stack-form">
+        <label>后端 API 基地址（Render）<input id="backend-base-url" type="text" placeholder="https://your-backend.onrender.com"></label>
+        <div class="quick-ops">
+          <button id="settings-save-backend" type="button">保存后端地址</button>
+          <button id="settings-test-backend" type="button">测试后端连通性</button>
+        </div>
+        <p id="backend-status" class="empty">当前后端：未配置，默认同源。</p>
+      </div>
+
+      <h4>LLM 中转接口（可选增强）</h4>
+      <div class="bridge-settings stack-form">
         <label class="switch-line">
           <input id="bridge-enabled" type="checkbox">
           <span>启用中转接口，失败时自动回退规则文本</span>
         </label>
         <label>中转 Endpoint<input id="bridge-endpoint" type="text" placeholder="https://your-proxy.example.com/open-resolve"></label>
+        <label>API Key（可选）<input id="bridge-api-key" type="password" placeholder="sk-... 或自定义密钥"></label>
+        <label>API Key Header（可选）<input id="bridge-api-key-header" type="text" placeholder="Authorization" value="Authorization"></label>
         <label>模型标识（可选）<input id="bridge-model" type="text" placeholder="qwen3-max / gpt-4o-mini 等"></label>
         <label>请求超时（毫秒）<input id="bridge-timeout" type="number" min="3000" max="60000" step="1000" value="15000"></label>
         <label class="switch-line">

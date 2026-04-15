@@ -17,15 +17,7 @@
     if (app && app.getEngine) {
       return app.getEngine();
     }
-    // 备用：从 localStorage 加载或创建新游戏
-    const STORAGE_KEY = "tf_static_state_v2";
-    const LEGACY_STORAGE_KEY = "tf_static_state_v1";
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return new StaticGameEngine(JSON.parse(raw));
-      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-      if (legacy) return new StaticGameEngine(JSON.parse(legacy));
-    } catch (_) {}
+    // 仅在 app 未就绪时兜底显示空引擎
     return StaticGameEngine.newGame();
   }
   const uiState = window.uiState || {};
@@ -41,10 +33,15 @@
   // 执行操作并提交结果的辅助函数
   function commit(message) {
     app.showFlash(message || "操作执行完成");
-    // 更新所有模块
     setTimeout(() => {
       renderAllModules(getEngine());
     }, 100);
+  }
+
+  async function runVizAction(action, params = {}) {
+    const payload = await app.runVizAction(action, params);
+    commit(payload && payload.message ? payload.message : "操作执行完成");
+    return payload;
   }
 
   // 设置抽屉状态
@@ -702,37 +699,31 @@
     document.getElementById("viz-module-grid")?.addEventListener("click", (event) => {
       // 农场：快捷操作
       if (event.target.closest("#viz-harvest-all")) {
-        commit(getEngine().harvestAll());
-        renderAllModules(getEngine());
+        runVizAction("harvest").catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       if (event.target.closest("#viz-collect-products")) {
-        commit(getEngine().collectLivestockProducts());
-        renderAllModules(getEngine());
+        runVizAction("collect").catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       if (event.target.closest("#viz-sell-market")) {
-        commit(getEngine().sellInventory("market"));
-        renderAllModules(getEngine());
+        runVizAction("sell_market").catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       if (event.target.closest("#viz-sell-stream")) {
-        commit(getEngine().sellInventory("stream"));
-        renderAllModules(getEngine());
+        runVizAction("sell_stream").catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 农场：推进一天
       if (event.target.closest("#viz-advance-day")) {
-        commit(getEngine().advanceDay());
-        renderAllModules(getEngine());
+        runVizAction("advance_day").catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 技能解锁
       const skillBtn = event.target.closest("[data-skill-id]");
       if (skillBtn) {
         const skillId = skillBtn.getAttribute("data-skill-id");
-        commit(getEngine().unlockSkill(skillId));
-        renderAllModules(getEngine());
+        runVizAction("unlock_skill", { skill_id: skillId }).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
 
@@ -745,13 +736,11 @@
         if (action === "plant") {
           const cropId = document.getElementById("viz-crop-select")?.value;
           if (!cropId) return;
-          commit(engine.plantCrop(plotId, cropId));
-          renderAllModules(engine);
+          runVizAction("plant", { plot_id: plotId, crop_id: cropId }).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
           return;
         }
         if (action === "harvest") {
-          commit(engine.harvestAll());
-          renderAllModules(engine);
+          runVizAction("harvest").catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
           return;
         }
         if (action === "story") {
@@ -761,14 +750,12 @@
       }
       // 养殖：扩栏
       if (event.target.closest("#viz-ranch-expand")) {
-        commit(getEngine().expandRanch(1));
-        renderAllModules(getEngine());
+        runVizAction("expand_ranch", { blocks: 1 }).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 养殖：收取产物
       if (event.target.closest("#viz-ranch-collect")) {
-        commit(getEngine().collectLivestockProducts());
-        renderAllModules(getEngine());
+        runVizAction("collect").catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 养殖：棚舍操作
@@ -777,8 +764,7 @@
         const penId = Number(penBtn.getAttribute("data-pen-id") || 0);
         const action = penBtn.getAttribute("data-pen-action");
         if (action === "collect") {
-          commit(getEngine().collectLivestockProducts());
-          renderAllModules(getEngine());
+          runVizAction("collect").catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
           return;
         }
         const livestockId = document.getElementById("viz-livestock-select")?.value;
@@ -786,55 +772,47 @@
           app.showFlash("当前阶段暂无可投放养殖品种。");
           return;
         }
-        commit(getEngine().raiseLivestock(penId, livestockId));
-        renderAllModules(getEngine());
+        runVizAction("raise_livestock", { pen_id: penId, livestock_id: livestockId }).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 订单履约操作
       const orderBtn = event.target.closest("[data-order-id]");
       if (orderBtn) {
         const orderId = orderBtn.getAttribute("data-order-id");
-        commit(getEngine().fulfillOrder(orderId));
-        renderAllModules(getEngine());
+        runVizAction("fulfill_order", { order_id: orderId }).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 公司治理操作
       const companyBtn = event.target.closest("[data-company-action]");
       if (companyBtn) {
         const action = companyBtn.getAttribute("data-company-action");
-        const engine = getEngine();
         if (action === "prepare") {
-          commit(engine.prepareCompany());
+          runVizAction("prepare_company", {}).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         } else if (action === "hire") {
-          commit(engine.hireVillagers(1));
+          runVizAction("hire", { count: 1 }).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         } else if (action === "dividend") {
-          commit(engine.distributeDividends());
+          runVizAction("dividends", {}).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         }
-        renderAllModules(getEngine());
         return;
       }
       // 合作推进操作
       const partnerBtn = event.target.closest("[data-partner]");
       if (partnerBtn) {
         const partner = partnerBtn.getAttribute("data-partner");
-        commit(getEngine().advancePartnership(partner, 10)); // 默认投入10源能
-        renderAllModules(getEngine());
+        runVizAction("advance_partnership", { partner_type: partner }).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 角色互动操作
       const charBtn = event.target.closest("[data-character-id]");
       if (charBtn) {
         const charId = charBtn.getAttribute("data-character-id");
-        commit(getEngine().interact(charId));
-        renderAllModules(getEngine());
+        runVizAction("interact", { character_id: charId }).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 任务操作
       const taskBtn = event.target.closest("[data-task-id]");
       if (taskBtn) {
-        const taskId = taskBtn.getAttribute("data-task-id");
-        commit(getEngine().completeTask(taskId));
-        renderAllModules(getEngine());
+        runVizAction("complete_task", {}).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 加工车间操作
@@ -845,13 +823,11 @@
           app.showFlash("请选择加工配方。");
           return;
         }
-        commit(getEngine().processItems(recipeId, batches));
-        renderAllModules(getEngine());
+        runVizAction("process", { recipe_id: recipeId, batches: batches }).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       if (event.target.closest("#viz-workshop-upgrade")) {
-        commit(getEngine().upgradeWorkshop());
-        renderAllModules(getEngine());
+        runVizAction("upgrade_workshop", {}).catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 开放玩法：生成行动建议
@@ -863,9 +839,12 @@
         }
         const scene = `刘家村，第 ${engine.state.turn} 天，${engine.state.time}`;
         const goal = engine.state.open_mode.last_goal || "低压力推进经营并保持家庭关系稳定";
-        engine.openModeOptions(scene, goal);
-        renderAllModules(engine);
-        app.showFlash("已刷新行动建议。");
+        app.apiRequest("/api/viz/open/suggest", {
+          method: "POST",
+          body: JSON.stringify({ scene, goal })
+        })
+          .then(() => app.syncFromBackend("已刷新行动建议。"))
+          .catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 开放玩法：执行自定义行动
@@ -882,10 +861,16 @@
           return;
         }
         const scene = `刘家村，第 ${engine.state.turn} 天，${engine.state.time}`;
-        const result = engine.resolveOpenActionLocal(scene, actionText);
-        engine.state.last_story_result = result;
-        commit(result);
-        input.value = "";
+        app.apiRequest("/api/viz/open/play", {
+          method: "POST",
+          body: JSON.stringify({ scene, open_action: actionText })
+        })
+          .then((data) => {
+            app.syncFromBackend();
+            commit(data.message || "执行完成");
+            input.value = "";
+          })
+          .catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
       // 开放玩法：点击建议选项执行
@@ -899,9 +884,15 @@
           return;
         }
         const scene = `刘家村，第 ${engine.state.turn} 天，${engine.state.time}`;
-        const result = engine.resolveOpenActionLocal(scene, optionText);
-        engine.state.last_story_result = result;
-        commit(result);
+        app.apiRequest("/api/viz/open/play", {
+          method: "POST",
+          body: JSON.stringify({ scene, open_action: optionText })
+        })
+          .then((data) => {
+            app.syncFromBackend();
+            commit(data.message || "执行完成");
+          })
+          .catch((error) => app.showFlash(`操作失败：${error.message || "未知错误"}`));
         return;
       }
     });
