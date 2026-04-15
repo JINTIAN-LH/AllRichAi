@@ -73,7 +73,7 @@
                 <button data-open="modal-order" type="button">订单履约</button>
                 <button data-open="modal-company" type="button">公司治理</button>
                 <button data-open="modal-characters" type="button">村民与角色</button>
-                <button data-open="modal-skills" type="button">系统辅助（解锁条件）</button>
+                <button data-open="modal-skills" type="button">系统辅助</button>
                 <button data-open="modal-partnerships" type="button">合作推进</button>
                 <button data-open="modal-open" type="button">开放玩法</button>
               </div>
@@ -151,44 +151,341 @@
         </section>
       </section>
 
+      <section id="page-viz" class="page">
+        <section class="viz-stage">
+          <div class="viz-hero">
+            <div>
+              <p class="viz-eyebrow">Static Viz Bridge</p>
+              <h2>可视化经营驾驶舱</h2>
+            </div>
+            <div class="viz-hero-side">
+              <div class="viz-badge">
+                <span>阶段</span>
+                <strong id="viz-stage-label">躺平起步</strong>
+              </div>
+              <div class="viz-badge">
+                <span>公司</span>
+                <strong id="viz-company-label">未注册</strong>
+              </div>
+              <div class="viz-badge">
+                <span>事件</span>
+                <strong id="viz-event-label">故事加载中</strong>
+              </div>
+            </div>
+          </div>
+          <div class="viz-summary-grid">
+            <article class="viz-metric-card money">
+              <span>资金</span>
+              <strong id="viz-money">0</strong>
+            </article>
+            <article class="viz-metric-card particle">
+              <span>微粒</span>
+              <strong id="viz-particles">0</strong>
+            </article>
+            <article class="viz-metric-card energy">
+              <span>源能</span>
+              <strong id="viz-energy">0</strong>
+            </article>
+            <article class="viz-metric-card prosperity">
+              <span>共富</span>
+              <strong id="viz-prosperity">0</strong>
+            </article>
+            <article class="viz-metric-card support">
+              <span>支持度</span>
+              <strong id="viz-support">0</strong>
+            </article>
+            <article class="viz-metric-card brand">
+              <span>品牌热度</span>
+              <strong id="viz-brand">0</strong>
+            </article>
+          </div>
+          <div class="viz-module-grid" id="viz-module-grid">
+            <!-- 农场模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-farm-body" aria-expanded="true">
+                <span>农场总览</span>
+                <small>地块成熟、收获与推进</small>
+                <em>收起</em>
+              </button>
+              <div class="viz-drawer-body is-open" id="viz-farm-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p id="viz-farm-caption">用同一套静态引擎状态驱动地块成熟、收获与推进。</p>
+                  </div>
+                  <div class="viz-toolbar">
+                    <label class="viz-inline-field">播种作物
+                      <select id="viz-crop-select"></select>
+                    </label>
+                    <button id="viz-advance-day" class="viz-btn accent" type="button">推进一天</button>
+                  </div>
+                </div>
+                <div class="viz-toolbar">
+                  <button id="viz-harvest-all" class="viz-btn ghost" type="button">一键收获</button>
+                  <button id="viz-collect-products" class="viz-btn ghost" type="button">收取养殖</button>
+                  <button id="viz-sell-market" class="viz-btn accent" type="button">集市销售</button>
+                  <button id="viz-sell-stream" class="viz-btn accent" type="button">直播销售</button>
+                </div>
+                <div id="viz-farm-grid" class="viz-farm-grid"></div>
+              </div>
+            </div>
+            <!-- 养殖模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-ranch-body" aria-expanded="false">
+                <span>养殖与护栏</span>
+                <small>棚舍、养殖品种与产出</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-ranch-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p id="viz-ranch-caption">护栏容量与养殖状态。</p>
+                  </div>
+                  <div class="viz-toolbar">
+                    <label class="viz-inline-field">养殖品种
+                      <select id="viz-livestock-select"></select>
+                    </label>
+                    <button id="viz-ranch-expand" class="viz-btn ghost" type="button">扩栏 +1</button>
+                    <button id="viz-ranch-collect" class="viz-btn accent" type="button">收取产物</button>
+                  </div>
+                </div>
+                <div id="viz-ranch-grid" class="viz-ranch-grid"></div>
+              </div>
+            </div>
+            <!-- 加工模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-process-body" aria-expanded="false">
+                <span>加工车间</span>
+                <small>加工配方与产出</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-process-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p id="viz-process-caption">加工坊状态与配方。</p>
+                  </div>
+                  <div class="viz-toolbar">
+                    <label class="viz-inline-field">加工配方
+                      <select id="viz-recipe-select"></select>
+                    </label>
+                    <label class="viz-inline-field">批次
+                      <select id="viz-batches-select">
+                        <option value="1">1批</option>
+                        <option value="2">2批</option>
+                        <option value="3">3批</option>
+                        <option value="5">5批</option>
+                        <option value="10">10批</option>
+                      </select>
+                    </label>
+                    <button id="viz-process-run" class="viz-btn accent" type="button">执行加工</button>
+                    <button id="viz-workshop-upgrade" class="viz-btn ghost" type="button">升级加工坊</button>
+                  </div>
+                </div>
+                <div id="viz-process-list" class="viz-process-list"></div>
+              </div>
+            </div>
+            <!-- 订单模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-orders-body" aria-expanded="false">
+                <span>订单履约</span>
+                <small>订单池与交付</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-orders-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p id="viz-orders-caption">当前可履约订单。</p>
+                  </div>
+                </div>
+                <div id="viz-orders-list" class="viz-order-list"></div>
+              </div>
+            </div>
+            <!-- 公司治理模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-company-body" aria-expanded="false">
+                <span>公司治理</span>
+                <small>公司状态与分红</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-company-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p id="viz-company-caption">公司经营状态。</p>
+                  </div>
+                </div>
+                <div id="viz-company-list" class="viz-company-list"></div>
+              </div>
+            </div>
+            <!-- 合作推进模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-partnership-body" aria-expanded="false">
+                <span>合作推进</span>
+                <small>长期合作与进度</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-partnership-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p id="viz-partnership-caption">合作线进度。</p>
+                  </div>
+                  <div class="viz-toolbar">
+                    <label class="viz-inline-field">投入源能
+                      <input id="viz-partnership-cost" type="number" min="1" max="100" value="10" />
+                    </label>
+                  </div>
+                </div>
+                <div id="viz-partnership-list" class="viz-partnership-list"></div>
+              </div>
+            </div>
+            <!-- 角色关系模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-character-body" aria-expanded="false">
+                <span>村民与角色</span>
+                <small>角色关系与互动</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-character-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p id="viz-character-caption">角色关系网。</p>
+                  </div>
+                </div>
+                <div id="viz-character-list" class="viz-character-list"></div>
+              </div>
+            </div>
+            <!-- 仓库与物品模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-inventory-body" aria-expanded="false">
+                <span>仓库与物品</span>
+                <small>库存与分类筛选</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-inventory-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p>当前库存与物品分类。</p>
+                  </div>
+                  <div id="viz-inventory-filters">
+                    <button class="viz-btn active" data-filter="all" type="button">全部</button>
+                    <button class="viz-btn" data-filter="crop" type="button">作物</button>
+                    <button class="viz-btn" data-filter="processed" type="button">加工品</button>
+                    <button class="viz-btn" data-filter="livestock" type="button">养殖品</button>
+                    <button class="viz-btn" data-filter="seed" type="button">种子</button>
+                    <button class="viz-btn" data-filter="item" type="button">物品</button>
+                  </div>
+                </div>
+                <div id="viz-inventory-list" class="viz-inventory-list"></div>
+              </div>
+            </div>
+            <!-- 任务与成就模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-task-body" aria-expanded="false">
+                <span>任务与成就</span>
+                <small>主线、日常与成就</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-task-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p>当前任务进度：<span id="viz-task-count">0/0</span></p>
+                  </div>
+                </div>
+                <div id="viz-task-list" class="viz-task-list"></div>
+              </div>
+            </div>
+            <!-- 剧情进度模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-story-body" aria-expanded="false">
+                <span>剧情进度</span>
+                <small>章节与推进度</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-story-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p>剧情章节与进度。</p>
+                  </div>
+                </div>
+                <div id="viz-story-timeline" class="viz-story-timeline"></div>
+              </div>
+            </div>
+            <!-- 开放玩法模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-open-body" aria-expanded="false">
+                <span>开放玩法</span>
+                <small>自定义行动与建议</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-open-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p>自定义行动与系统建议。</p>
+                  </div>
+                </div>
+                <div id="viz-open-suggestions" class="viz-open-suggestions"></div>
+                <div class="viz-open-controls">
+                  <button id="viz-open-suggest" class="viz-btn ghost" type="button">生成行动建议</button>
+                  <div class="viz-open-input-group">
+                    <input id="viz-open-input" type="text" placeholder="输入自定义行动...">
+                    <button id="viz-open-run" class="viz-btn accent" type="button">执行</button>
+                  </div>
+                </div>
+                <div>
+                  <p>执行结果：</p>
+                  <div id="viz-open-result" class="viz-open-result"></div>
+                </div>
+              </div>
+            </div>
+            <!-- 系统技能模块 -->
+            <div class="viz-drawer-card">
+              <button class="viz-drawer-toggle" data-drawer-target="viz-skills-body" aria-expanded="false">
+                <span>系统技能</span>
+                <small>解锁经营技能</small>
+                <em>展开</em>
+              </button>
+              <div class="viz-drawer-body" id="viz-skills-body">
+                <div class="viz-card-head">
+                  <div>
+                    <p>可解锁的经营技能与升级选项。</p>
+                  </div>
+                </div>
+                <div id="viz-skills-list" class="viz-skills-list"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
       <section id="page-balance" class="page">
         <section class="dashboard-grid profile-center-grid">
           <article class="card wide profile-center-card">
             <h2>个人中心</h2>
             <p class="empty">围绕组织架构、升级路线、资源策略、共富目标与自动化运营来复盘当前局面。</p>
-
             <div class="profile-board">
               <h3>主角档案</h3>
               <div id="profile-lines" class="profile-lines"></div>
             </div>
-
             <div class="profile-board">
               <h3>经营关键指标</h3>
               <div id="balance-stats" class="panel-stats"></div>
             </div>
-
             <div class="profile-board">
               <h3>核心模块清单</h3>
               <ul id="core-module-list" class="status-list compact core-module-list"></ul>
             </div>
-
             <div class="profile-board">
               <h3>公司等级路线（1-5级）</h3>
               <div id="stage-goal-grid" class="stage-goal-grid"></div>
             </div>
-
             <div class="profile-board">
               <h4>共富指标进度追踪</h4>
               <div id="progress-grid" class="progress-grid"></div>
             </div>
-
             <div class="profile-board">
               <h4>当前参数快照</h4>
               <ul id="balance-config-list" class="status-list compact"></ul>
             </div>
           </article>
         </section>
-
         <button id="btn-open-balance-config" class="story-btn balance-float-btn" type="button">平衡参数设置</button>
       </section>
     </main>
@@ -196,6 +493,7 @@
     <nav class="bottom-nav">
       <button class="active" data-page="home" type="button">主页</button>
       <button data-page="story" type="button">剧情页</button>
+      <button data-page="viz" type="button">可视化</button>
       <button data-page="balance" type="button">个人中心</button>
     </nav>
 
@@ -214,7 +512,7 @@
       <button class="modal-close" data-close type="button">×</button>
       <ul id="farm-list" class="status-list"></ul>
       <form id="farm-form" class="stack-form">
-        <label>地块<select name="plotId"></select></label>
+        <label>地块编号<input name="plotId" type="number" min="1" value="1"></label>
         <label>作物<select name="cropId"></select></label>
         <button type="submit">播种</button>
       </form>
@@ -234,7 +532,7 @@
         <button id="btn-expand-ranch" type="button">扩栏 +1</button>
       </div>
       <form id="ranch-form" class="stack-form">
-        <label>棚舍<select name="penId"></select></label>
+        <label>棚舍编号<input name="penId" type="number" min="1" value="1"></label>
         <label>品种<select name="livestockId"></select></label>
         <button type="submit">开始养殖</button>
       </form>
@@ -249,13 +547,7 @@
       </div>
       <form id="process-form" class="stack-form">
         <label>配方<select name="recipeId"></select></label>
-        <label>批次<select name="batches">
-          <option value="1">1 批</option>
-          <option value="2">2 批</option>
-          <option value="3">3 批</option>
-          <option value="4">4 批</option>
-          <option value="5">5 批</option>
-        </select></label>
+        <label>批次<input name="batches" type="number" min="1" value="1"></label>
         <button type="submit">执行加工</button>
       </form>
     </dialog>
@@ -265,7 +557,7 @@
       <button class="modal-close" data-close type="button">×</button>
       <ul id="order-list" class="status-list compact"></ul>
       <form id="order-form" class="stack-form">
-        <label>可交付订单<select name="orderId"></select></label>
+        <label>订单名称<input name="orderTitle" type="text" placeholder="例如：城郊生鲜店补货"></label>
         <button type="submit">交付订单</button>
       </form>
     </dialog>
@@ -341,8 +633,6 @@
           <span>启用中转接口，失败时自动回退规则文本</span>
         </label>
         <label>中转 Endpoint<input id="bridge-endpoint" type="text" placeholder="https://your-proxy.example.com/open-resolve"></label>
-        <label>API 密钥（可选）<input id="bridge-api-key" type="password" placeholder="sk-xxxx / your-api-key"></label>
-        <label>密钥请求头（可选）<input id="bridge-api-key-header" type="text" placeholder="Authorization 或 X-API-Key"></label>
         <label>模型标识（可选）<input id="bridge-model" type="text" placeholder="qwen3-max / gpt-4o-mini 等"></label>
         <label>请求超时（毫秒）<input id="bridge-timeout" type="number" min="3000" max="60000" step="1000" value="15000"></label>
         <label class="switch-line">
@@ -386,7 +676,9 @@
       <p id="projection-text" class="empty"></p>
     </dialog>
 
+    <link rel="stylesheet" href="./assets/static-viz.css">
     <script src="./assets/engine.js"></script>
     <script src="./assets/app.js"></script>
+    <script src="./assets/static-viz.js"></script>
   </body>
 </html>

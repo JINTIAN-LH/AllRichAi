@@ -1,3 +1,65 @@
+## Commit #4: 第二轮界面交互内测 + 构建发布验证 ✅
+**日期**: 2026-04-15
+**作者**: GitHub Copilot
+**类型**: Test + Build + Integration
+
+### 工作内容
+完成第二轮“各界面内人机交互逻辑”内测，补充跨页面与跨 API 的交互回归测试；执行一轮完整构建（含同步到 release_src 和 dist 打包），为提交推送做发布前校验。
+
+### 关键改动
+- 新增 Web 交互测试覆盖：
+   - `/action` 在 `next=story|balance` 时的重定向行为
+   - `/api/story/execute-command` 的空输入校验和固定指令映射
+   - `/api/viz/state`、`/api/viz/action` 成功与失败路径
+   - `/api/viz/open/suggest`、`/api/viz/open/play`、`/api/viz/story/dialog`、`/api/viz/story/choice`
+   - `/api/viz/slot/save|load|delete` 存档槽位交互链路
+- 优化订单交付输入鲁棒性（支持编号、标题、复制整行文本解析）并补回归测试。
+- 执行构建同步：`build_dist.bat --sync-from-project`，同步 `docs`、`static`、`viz`、`saves` 导出到 `release_src`，并生成 `dist` 与上传包。
+
+### 验证结果
+- 单元测试：`python -m unittest discover -s tests` -> **20/20 通过**
+- 路由冒烟：主页/剧情面板/可视化页面与关键 API 返回正常（含空指令 400 校验）
+- 构建验证：`build_dist.bat --sync-from-project` -> **成功**
+
+---
+
+## Commit #3: 开心农场可视化增量融合 - P2/P3/P4 执行完成 ✅
+**日期**: 2026-03-28
+**作者**: GitHub Copilot
+**类型**: Feature + Integration
+
+### 工作内容
+按《开心农场可视化玩法 增量融合 SDD》继续执行后续阶段，完成 P2（动画与图表）、P3（多端适配）、P4（剧情可视化接入）落地，并通过单元测试与静态构建验证。
+
+### 关键改动
+- 后端新增剧情可视化 API（不改原路由）:
+   - `POST /api/viz/story/dialog`
+   - `POST /api/viz/story/choice`
+- 前端桥接层新增剧情调用:
+   - `EngineBridge.getStoryDialog()`
+   - `EngineBridge.executeStoryChoice()`
+- 农场模块改为真实状态驱动渲染:
+   - `farm_plots` 映射驱动地块状态/UI
+   - 去除本地模拟更新，改为后端返回 state 直推更新
+- 图表模块改为真实数据驱动:
+   - 收益趋势改为滚动历史曲线（基于 turn/money）
+   - 资源占比与经营效率指标改为实时状态计算
+- 剧情模块去 Mock:
+   - 时间线可解锁状态 + 章节点击
+   - 对话面板与结果面板走真实 `/api/viz/story/*`
+- 多端适配增强:
+   - 强化移动端布局、防溢出、卡片压缩、图表高度自适配
+   - 顶部状态栏稳定更新（day/season/weather 显式 id）
+- 状态同步优化:
+   - 新增 `StateSync.applyState()`，点击后直接消费响应 state，减少重复请求
+   - 变更检测纳入 `farm_plots`
+
+### 验证结果
+- 单元测试: `python -m unittest discover -s tests` -> **15/15 通过**
+- 打包验证: `python build_dist.py --sync-from-project` -> **成功**
+- 产物校验: `dist/assets/viz/*` 与 `dist/assets/source-static/viz/*` 已同步最新文件
+
+---
 
 ---
 
@@ -289,26 +351,26 @@ http://localhost:3002/story-panel
 
 ---
 
-## Commit #4: 补充 Git 常用流程文档 ✅
-**日期**: 2026-03-28  
-**作者**: GitHub Copilot  
-**类型**: Docs
+## Commit #4: 静态端可视化界面模块化抽屉化重构
+**日期**: 2026-03-28
+**作者**: GitHub Copilot
+**类型**: Feature/UI Refactor
 
 ### 工作内容
-在项目主说明文档中新增 Git 日常操作章节，方便后续多人协作和自用维护。
+- 静态端可视化界面（可视化驾驶舱）重构为模块化抽屉（collapsible card）结构。
+- 每个业务模块（农场、养殖、加工、订单、公司、合作、角色、仓库、任务、剧情、开放玩法）均以可折叠卡片形式独立呈现，仅在可视化页渲染。
+- 支持点击卡片头部展开/收起，内容区域动态渲染对应模块数据。
+- 所有业务模块的渲染与交互逻辑迁移到 static-viz.js 的 renderAllModules，支持状态变更后自动刷新。
+- 完善底层事件绑定，确保所有操作后 UI 实时同步。
 
-### 变更说明
-- 在 `README.md` 新增“Git 常用流程（Windows）”
-- 覆盖身份配置、日常提交推送、拉取更新、查看历史、按 `.gitignore` 刷新跟踪文件
-- 命令均可直接在项目根目录执行
+### 关键改动
+- index.html: 注入 <div class="viz-module-grid">，每个业务模块为 .viz-drawer-card。
+- static-viz.js: 新增 renderAllModules，重构 bindEvents，所有模块渲染与交互集中管理。
+- static-viz.css: 复用/补充抽屉卡片样式，适配新结构。
 
-### 文件清单
-- 更新: `README.md`
-- 更新: `commit.md`
-
-### 状态
-- ✅ 文档已补齐
-- ✅ 可直接用于后续开发提交流程
+### 验证结果
+- 本地静态构建通过，所有抽屉模块可正常展开/收起，交互与数据同步无误。
+- 兼容移动端与桌面端，抽屉卡片自适应布局。
 
 ---
 
@@ -404,6 +466,21 @@ http://localhost:3002/story-panel
 
 ### 备注
 这是一个完整的前端重构方案，包括全新设计的响应式页面、专业的暗色样式系统、充分的分析和文档、详尽的集成和测试指南。建议立即启动后端集成工作，预计2-3天内完成全部上线。
+
+---
+
+## Commit #5: 回退 release_src/index.html 至上上个版本
+**日期**: 2026-03-29
+**作者**: GitHub Copilot
+**类型**: Revert
+
+### 工作内容
+- 将 release_src/index.html 回退到 commit 54ec3df（上上个版本），撤销近期所有页面结构相关更改。
+- 重新构建静态分发包，确保回退内容生效。
+
+### 验证结果
+- 页面已恢复至历史状态，所有近期更改被撤销。
+- dist 产物同步回退。
 
 ---
 

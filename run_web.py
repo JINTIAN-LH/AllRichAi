@@ -6,10 +6,24 @@ from pathlib import Path
 from farmgame.webapp import app
 
 
+DEFAULT_PORT = 5000
+DEFAULT_LOCAL_HOST = "127.0.0.1"
+DEFAULT_PLATFORM_HOST = "0.0.0.0"
+DEFAULT_CONFIG_PATH = "config/llm_api.json"
+
+
 def _is_dev_mode() -> bool:
-    if "--dev" in sys.argv:
-        return True
-    return os.getenv("ALLRICHAI_DEV", "0") == "1"
+    return "--dev" in sys.argv or os.getenv("ALLRICHAI_DEV", "0") == "1"
+
+
+def _read_port_from_config(path: Path) -> int:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return DEFAULT_PORT
+    if not isinstance(payload, dict):
+        return DEFAULT_PORT
+    return _safe_port(payload.get("PORT", DEFAULT_PORT))
 
 
 def _load_web_port() -> int:
@@ -17,30 +31,31 @@ def _load_web_port() -> int:
     if explicit_port:
         return _safe_port(explicit_port)
 
-    config_path = Path(os.getenv("ALLRICHAI_LLM_CONFIG", "config/llm_api.json"))
-    try:
-        if config_path.exists():
-            payload = json.loads(config_path.read_text(encoding="utf-8"))
-            if isinstance(payload, dict):
-                return _safe_port(payload.get("PORT", 5000))
-    except (OSError, ValueError, json.JSONDecodeError):
-        pass
-    return 5000
+    # Render and similar PaaS expose runtime port via PORT.
+    platform_port = os.getenv("PORT", "").strip()
+    if platform_port:
+        return _safe_port(platform_port)
+
+    config_path = Path(os.getenv("ALLRICHAI_LLM_CONFIG", DEFAULT_CONFIG_PATH))
+    if config_path.exists():
+        return _read_port_from_config(config_path)
+    return DEFAULT_PORT
 
 
 def _load_web_host() -> str:
-    host = os.getenv("ALLRICHAI_WEB_HOST", "127.0.0.1").strip()
-    return host or "127.0.0.1"
+    default_host = DEFAULT_PLATFORM_HOST if os.getenv("PORT", "").strip() else DEFAULT_LOCAL_HOST
+    host = os.getenv("ALLRICHAI_WEB_HOST", default_host).strip()
+    return host or DEFAULT_LOCAL_HOST
 
 
 def _safe_port(value: object) -> int:
     try:
         port = int(value)
     except (TypeError, ValueError):
-        return 5000
+        return DEFAULT_PORT
     if 1 <= port <= 65535:
         return port
-    return 5000
+    return DEFAULT_PORT
 
 
 if __name__ == "__main__":

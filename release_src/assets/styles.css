@@ -12,6 +12,12 @@
   --danger: #8f2222;
   --line: rgba(35, 31, 26, 0.16);
   --shadow: 0 14px 32px rgba(39, 24, 12, 0.12);
+  --bottom-nav-font-scale: 1;
+  --bottom-nav-spacing-scale: 1;
+  --bottom-nav-font-size: clamp(0.72rem, calc(0.72rem * var(--bottom-nav-font-scale)), 1.02rem);
+  --bottom-nav-gap: clamp(1px, calc(1px * var(--bottom-nav-spacing-scale)), 6px);
+  --bottom-nav-pad-y: clamp(8px, calc(9px * var(--bottom-nav-spacing-scale)), 14px);
+  --bottom-nav-pad-x: clamp(8px, calc(10px * var(--bottom-nav-spacing-scale)), 18px);
 }
 
 * {
@@ -850,17 +856,22 @@ label {
   bottom: 0;
   z-index: 25;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--bottom-nav-gap);
   background: rgba(18, 22, 18, 0.96);
 }
 
 .bottom-nav button {
   min-height: 54px;
+  padding: var(--bottom-nav-pad-y) var(--bottom-nav-pad-x);
   border: none;
   background: transparent;
   color: #efe3cf;
   font-weight: 700;
+  font-size: var(--bottom-nav-font-size);
+  line-height: 1.12;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .bottom-nav button.active {
@@ -902,6 +913,11 @@ label {
 @media (max-width: 780px) {
   .page-shell {
     width: min(100%, calc(100% - 14px));
+  }
+
+  .status-pills [data-pill="particle"],
+  .status-pills [data-pill="prosperity"] {
+    display: none;
   }
 
   .stats,

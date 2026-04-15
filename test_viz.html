@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>开心农场可视化玩法测试</title>
+  <style>
+    /* 基础样式 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 10px;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    
+    .viz-stage {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    
+    .viz-hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    .viz-hero-side {
+      display: flex;
+      gap: 15px;
+    }
+    
+    .viz-badge {
+      background: #e9ecef;
+      padding: 8px 12px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+    }
+    
+    .viz-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    
+    .viz-metric-card {
+      text-align: center;
+      padding: 15px;
+      border-radius: 8px;
+      color: white;
+    }
+    
+    .money { background: linear-gradient(45deg, #ff9a9e, #fecfef); }
+    .particle { background: linear-gradient(45deg, #a8edea, #fed6e3); }
+    .energy { background: linear-gradient(45deg, #ffecd2, #fcb69f); }
+    .prosperity { background: linear-gradient(45deg, #a8c8ec, #bfe0f0); }
+    .support { background: linear-gradient(45deg, #d299c2, #fef9d7); }
+    .brand { background: linear-gradient(45deg, #89f7fe, #66a6ff); }
+    
+    .viz-module-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+    
+    .viz-drawer-card {
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      overflow: hidden;
+      background: white;
+    }
+    
+    .viz-drawer-toggle {
+      width: 100%;
+      padding: 15px;
+      background: #f8f9fa;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+    }
+    
+    .viz-drawer-toggle:hover {
+      background: #e9ecef;
+    }
+    
+    .viz-drawer-body {
+      padding: 20px;
+      display: none;
+    }
+    
+    .viz-drawer-body.is-open {
+      display: block;
+    }
+    
+    .viz-card-head {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    .viz-toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .viz-inline-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    .viz-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    
+    .viz-btn.ghost {
+      background: transparent;
+      border: 1px solid #ccc;
+    }
+    
+    .viz-btn.accent {
+      background: #007bff;
+      color: white;
+    }
+    
+    .viz-farm-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    
+    .viz-plot-card {
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    
+    .viz-plot-card.empty { background-color: #f8f9fa; }
+    .viz-plot-card.growing { background-color: #d4edda; }
+    .viz-plot-card.ready { background-color: #fff3cd; }
+    
+    .viz-plot-top {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    
+    .viz-plot-status {
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+    
+    .viz-plot-action {
+      margin-top: 10px;
+      width: 100%;
+      padding: 5px;
+      border: 1px solid #007bff;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .viz-plot-action:hover {
+      background: #f8f9fa;
+    }
+    
+    .viz-order-item {
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+    }
+    
+    .viz-order-item-head {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    
+    .viz-order-item-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+    
+    .viz-muted {
+      color: #6c757d;
+      font-size: 0.9rem;
+    }
+    
+    .viz-company-item {
+      border-bottom: 1px solid #e9ecef;
+      padding: 10px 0;
+    }
+    
+    .viz-character-item, .viz-partnership-item {
+      border-bottom: 1px solid #e9ecef;
+      padding: 15px 0;
+    }
+    
+    .viz-task-item {
+      border-bottom: 1px solid #e9ecef;
+      padding: 10px 0;
+    }
+    
+    .viz-inventory-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e9ecef;
+      padding: 10px 0;
+    }
+    
+    .viz-open-option {
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+    }
+    
+    .viz-open-controls {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e9ecef;
+    }
+    
+    .viz-open-input-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    input[type="text"], input[type="number"], select {
+      padding: 8px 12px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+    }
+    
+    input[type="text"], input[type="number"] {
+      flex: 1;
+    }
+    
+    progress {
+      width: 100%;
+      height: 10px;
+      border-radius: 5px;
+      background: #f0f0f0;
+    }
+    
+    @media (max-width: 768px) {
+      .viz-hero {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
+      .viz-hero-side {
+        width: 100%;
+        justify-content: center;
+      }
+      
+      .viz-summary-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      }
+      
+      .viz-module-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>开心农场可视化玩法</h1>
+      <p>躺平农场主可视化驾驶舱 - 静态版本功能测试</p>
+    </header>
+    
+    <section class="viz-stage">
+      <section class="viz-stage">
+        <div class="viz-hero">
+          <div>
+            <p class="viz-eyebrow">Static Viz Bridge</p>
+            <h2>可视化经营驾驶舱</h2>
+          </div>
+          <div class="viz-hero-side">
+            <div class="viz-badge">
+              <span>阶段</span>
+              <strong id="viz-stage-label">躺平起步</strong>
+            </div>
+            <div class="viz-badge">
+              <span>公司</span>
+              <strong id="viz-company-label">未注册</strong>
+            </div>
+            <div class="viz-badge">
+              <span>事件</span>
+              <strong id="viz-event-label">故事加载中</strong>
+            </div>
+          </div>
+        </div>
+        <div class="viz-summary-grid">
+          <article class="viz-metric-card money">
+            <span>资金</span>
+            <strong id="viz-money">0</strong>
+          </article>
+          <article class="viz-metric-card particle">
+            <span>微粒</span>
+            <strong id="viz-particles">0</strong>
+          </article>
+          <article class="viz-metric-card energy">
+            <span>源能</span>
+            <strong id="viz-energy">0</strong>
+          </article>
+          <article class="viz-metric-card prosperity">
+            <span>共富</span>
+            <strong id="viz-prosperity">0</strong>
+          </article>
+          <article class="viz-metric-card support">
+            <span>支持度</span>
+            <strong id="viz-support">0</strong>
+          </article>
+          <article class="viz-metric-card brand">
+            <span>品牌热度</span>
+            <strong id="viz-brand">0</strong>
+          </article>
+        </div>
+        <div class="viz-module-grid" id="viz-module-grid">
+          <!-- 农场模块 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-farm-body" aria-expanded="true">
+              <span>农场总览</span>
+              <small>地块成熟、收获与推进</small>
+              <em>收起</em>
+            </button>
+            <div class="viz-drawer-body is-open" id="viz-farm-body">
+              <div class="viz-card-head">
+                <div>
+                  <p id="viz-farm-caption">用同一套静态引擎状态驱动地块成熟、收获与推进。</p>
+                </div>
+                <div class="viz-toolbar">
+                  <label class="viz-inline-field">播种作物
+                    <select id="viz-crop-select"></select>
+                  </label>
+                  <button id="viz-advance-day" class="viz-btn accent" type="button">推进一天</button>
+                </div>
+              </div>
+              <div id="viz-farm-grid" class="viz-farm-grid"></div>
+            </div>
+          </div>
+          
+          <!-- 养殖模块 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-ranch-body" aria-expanded="false">
+              <span>养殖与护栏</span>
+              <small>棚舍、养殖品种与产出</small>
+              <em>展开</em>
+            </button>
+            <div class="viz-drawer-body" id="viz-ranch-body">
+              <div class="viz-card-head">
+                <div>
+                  <p id="viz-ranch-caption">从主页资产同步养殖数据，实时反映产出变化。</p>
+                </div>
+                <div class="viz-toolbar">
+                  <label class="viz-inline-field">养殖品种
+                    <select id="viz-livestock-select"></select>
+                  </label>
+                  <button id="viz-ranch-expand" class="viz-btn ghost" type="button">扩建护栏</button>
+                  <button id="viz-ranch-collect" class="viz-btn accent" type="button">收取产物</button>
+                </div>
+              </div>
+              <div id="viz-ranch-grid" class="viz-ranch-grid"></div>
+            </div>
+          </div>
+          
+          <!-- 加工车间 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-process-body" aria-expanded="false">
+              <span>加工车间</span>
+              <small>农产品加工与升级</small>
+              <em>展开</em>
+            </button>
+            <div class="viz-drawer-body" id="viz-process-body">
+              <div class="viz-card-head">
+                <p id="viz-process-caption">农产品加工坊，可将原材料转化为高价值产品。</p>
+              </div>
+              <div id="viz-process-list"></div>
+            </div>
+          </div>
+          
+          <!-- 订单履约 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-orders-body" aria-expanded="false">
+              <span>订单履约</span>
+              <small>市场订单与收益</small>
+              <em>展开</em>
+            </button>
+            <div class="viz-drawer-body" id="viz-orders-body">
+              <div class="viz-card-head">
+                <p id="viz-orders-caption">可执行订单列表，履约后获得资金与其他资源。</p>
+              </div>
+              <div id="viz-orders-list"></div>
+            </div>
+          </div>
+          
+          <!-- 公司治理 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-company-body" aria-expanded="false">
+              <span>公司治理</span>
+              <small>员工管理与分红</small>
+              <em>展开</em>
+            </button>
+            <div class="viz-drawer-body" id="viz-company-body">
+              <div class="viz-card-head">
+                <p id="viz-company-caption">公司运营状态，包括员工、品牌、财务等。</p>
+              </div>
+              <div id="viz-company-list"></div>
+            </div>
+          </div>
+          
+          <!-- 合作推进 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-partnership-body" aria-expanded="false">
+              <span>合作推进</span>
+              <small>长期合作关系建设</small>
+              <em>展开</em>
+            </button>
+            <div class="viz-drawer-body" id="viz-partnership-body">
+              <div class="viz-card-head">
+                <p id="viz-partnership-caption">与不同机构建立长期合作关系。</p>
+              </div>
+              <div id="viz-partnership-list"></div>
+            </div>
+          </div>
+          
+          <!-- 村民角色 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-characters-body" aria-expanded="false">
+              <span>村民与角色</span>
+              <small>人物关系与互动</small>
+              <em>展开</em>
+            </button>
+            <div class="viz-drawer-body" id="viz-characters-body">
+              <div class="viz-card-head">
+                <p id="viz-character-caption">关键人物关系网络，通过互动提升好感度。</p>
+              </div>
+              <div id="viz-character-list"></div>
+            </div>
+          </div>
+          
+          <!-- 库存管理 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-inventory-body" aria-expanded="false">
+              <span>库存管理</span>
+              <small>物资存储与分类</small>
+              <em>展开</em>
+            </button>
+            <div class="viz-drawer-body" id="viz-inventory-body">
+              <div class="viz-card-head">
+                <div>
+                  <p>当前库存情况，与主页资产数据同步。</p>
+                </div>
+                <div id="viz-inventory-filters">
+                  <button class="viz-btn active" data-filter="all" type="button">全部</button>
+                  <button class="viz-btn" data-filter="crop" type="button">作物</button>
+                  <button class="viz-btn" data-filter="processed" type="button">加工品</button>
+                  <button class="viz-btn" data-filter="livestock" type="button">养殖品</button>
+                  <button class="viz-btn" data-filter="seed" type="button">种子</button>
+                  <button class="viz-btn" data-filter="item" type="button">物品</button>
+                </div>
+              </div>
+              <div id="viz-inventory-list"></div>
+            </div>
+          </div>
+          
+          <!-- 任务系统 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-tasks-body" aria-expanded="false">
+              <span>任务系统</span>
+              <small>主线与支线任务</small>
+              <em>展开</em>
+            </button>
+            <div class="viz-drawer-body" id="viz-tasks-body">
+              <div class="viz-card-head">
+                <p>当前任务进度：<span id="viz-task-count">0/0</span></p>
+              </div>
+              <div id="viz-task-list"></div>
+            </div>
+          </div>
+          
+          <!-- 剧情时间线 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-story-body" aria-expanded="false">
+              <span>剧情时间线</span>
+              <small>故事章节与选择</small>
+              <em>展开</em>
+            </button>
+            <div class="viz-drawer-body" id="viz-story-body">
+              <div id="viz-story-timeline"></div>
+              <div id="viz-story-panel" hidden>
+                <h3 id="viz-story-title"></h3>
+                <p id="viz-story-character"></p>
+                <p id="viz-story-text"></p>
+                <div id="viz-story-options"></div>
+                <div>
+                  <p>执行结果：</p>
+                  <div id="viz-story-result"></div>
+                  <button id="viz-story-close" class="viz-btn ghost" type="button">关闭</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 开放玩法 -->
+          <div class="viz-drawer-card">
+            <button class="viz-drawer-toggle" data-drawer-target="viz-openmode-body" aria-expanded="false">
+              <span>开放玩法</span>
+              <small>AI辅助决策与自定义行动</small>
+              <em>展开</em>
+            </button>
+            <div class="viz-drawer-body" id="viz-openmode-body">
+              <div class="viz-card-head">
+                <p>开放玩法模式，提供AI辅助决策与自定义行动选项。</p>
+              </div>
+              <div id="viz-open-suggestions"></div>
+              <div>
+                <p>执行结果：</p>
+                <div id="viz-open-result"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <script>
+    // 模拟游戏引擎数据
+    const mockEngine = {
+      state: {
+        stage: "躺平起步",
+        company: "未注册",
+        events: "故事加载中",
+        money: 1000,
+        particle: 50,
+        energy: 100,
+        prosperity: 10,
+        villagerSupport: 65,
+        brand: 30,
+        season: "春季",
+        weather: "晴",
+        time: "上午",
+        turn: 1,
+        plots: [
+          { plot_id: 1, crop_id: "corn", days_remaining: 3, ready_to_harvest: false },
+          { plot_id: 2, crop_id: null, ready_to_harvest: false },
+          { plot_id: 3, crop_id: "soybean", days_remaining: 0, ready_to_harvest: true },
+          { plot_id: 4, crop_id: null, ready_to_harvest: false }
+        ],
+        pens: [
+          { pen_id: 1, livestock_id: "chicken", days_remaining: 2, ready_to_collect: false },
+          { pen_id: 2, livestock_id: null, ready_to_collect: false }
+        ],
+        inventory: {
+          corn: 10,
+          soybean: 5,
+          chicken_egg: 3,
+          corn_seed: 20
+        },
+        active_orders: [
+          { order_id: "order1", title: "收购玉米", required_items: { corn: 5 }, reward_money: 200, reward_particles: 10, reward_prosperity: 2, completed: false },
+          { order_id: "order2", title: "鸡蛋采购", required_items: { chicken_egg: 5 }, reward_money: 150, reward_particles: 5, reward_prosperity: 1, completed: true }
+        ],
+        company: {
+          unlocked: false,
+          employees: 2,
+          brand_level: 1,
+          brand_score: 30,
+          employee_morale: 75,
+          cash_reserve: 500,
+          profit_pool: 200,
+          support_score: 65,
+          dividend_rate: 0.05,
+          workshop_level: 1
+        },
+        partnerships: {
+          science_progress: 25,
+          science_unlocked: true,
+          government_progress: 10,
+          government_unlocked: false,
+          business_progress: 5,
+          business_unlocked: false,
+          village_progress: 40,
+          village_unlocked: true
+        },
+        characters: {
+          liu_huaizhi: { favor: 70 },
+          liu_xiaoxue: { favor: 80 },
+          yang_dazhen: { favor: 60 }
+        },
+        tasks: {
+          main_first_harvest: { progress: 1, claimed: true, status: 'completed' },
+          daily_plant: { progress: 2, claimed: false, status: 'available' },
+          side_support_sister: { progress: 5, claimed: false, status: 'available' }
+        },
+        open_mode: {
+          last_options: [
+            "扩大种植规模，增加收入来源",
+            "加强与村民的互动，提升支持度",
+            "投资加工设备，提高产品附加值"
+          ],
+          last_play_result: "执行了扩大种植规模的策略，购买了更多玉米种子并播种了闲置土地。"
+        }
+      },
+      
+      statusSnapshot: function() {
+        return this.state;
+      },
+      
+      availableCrops: function() {
+        return {
+          corn: "玉米",
+          soybean: "大豆",
+          wheat: "小麦"
+        };
+      },
+      
+      availableLivestock: function() {
+        return {
+          chicken: "鸡",
+          pig: "猪"
+        };
+      },
+      
+      availableRecipes: function() {
+        return {
+          corn_flour: "玉米面粉",
+          soy_milk: "豆浆"
+        };
+      },
+      
+      advanceDay: function() {
+        this.state.turn++;
+        this.state.money += 50; // 每天固定收入
+        return `已推进到第 ${this.state.turn} 天`;
+      },
+      
+      plantCrop: function(plotId, cropId) {
+        const plot = this.state.plots.find(p => p.plot_id === plotId);
+        if (plot && !plot.crop_id) {
+          plot.crop_id = cropId;
+          plot.days_remaining = 5; // 模拟生长时间
+          plot.ready_to_harvest = false;
+          // 减少种子库存
+          const seedId = cropId + "_seed";
+          if (this.state.inventory[seedId]) {
+            this.state.inventory[seedId]--;
+            if (this.state.inventory[seedId] <= 0) {
+              delete this.state.inventory[seedId];
+            }
+          }
+          return `已在地块 ${plotId} 播种 ${cropId}`;
+        }
+        return "无法在此地块播种";
+      },
+      
+      harvestAll: function() {
+        let harvested = 0;
+        this.state.plots.forEach(plot => {
+          if (plot.ready_to_harvest && plot.crop_id) {
+            // 收获作物，增加库存
+            if (!this.state.inventory[plot.crop_id]) {
+              this.state.inventory[plot.crop_id] = 0;
+            }
+            this.state.inventory[plot.crop_id] += 5; // 每次收获5单位
+            plot.crop_id = null;
+            plot.days_remaining = 0;
+            plot.ready_to_harvest = false;
+            harvested++;
+          }
+        });
+        return `收获了 ${harvested} 块地的作物`;
+      },
+      
+      expandRanch: function(count) {
+        // 扩建护栏
+        for (let i = 0; i < count; i++) {
+          this.state.pens.push({
+            pen_id: this.state.pens.length + 1,
+            livestock_id: null,
+            days_remaining: 0,
+            ready_to_collect: false
+          });
+        }
+        return `扩建了 ${count} 个棚舍`;
+      },
+      
+      collectLivestockProducts: function() {
+        let collected = 0;
+        this.state.pens.forEach(pen => {
+          if (pen.ready_to_collect && pen.livestock_id) {
+            const productItem = pen.livestock_id + "_product";
+            if (!this.state.inventory[productItem]) {
+              this.state.inventory[productItem] = 0;
+            }
+            this.state.inventory[productItem] += 3; // 每次收集3单位
+            pen.ready_to_collect = false;
+            collected++;
+          }
+        });
+        return `收集了 ${collected} 个棚舍的产物`;
+      },
+      
+      raiseLivestock: function(penId, livestockId) {
+        const pen = this.state.pens.find(p => p.pen_id === penId);
+        if (pen && !pen.livestock_id) {
+          pen.livestock_id = livestockId;
+          pen.days_remaining = 3; // 生长周期
+          pen.ready_to_collect = false;
+          return `在棚舍 ${penId} 投放了 ${livestockId}`;
+        }
+        return "无法在此棚舍投放";
+      },
+      
+      processGoods: function(recipeId, batches) {
+        // 简单的加工逻辑模拟
+        this.state.money -= 50 * batches; // 成本
+        const outputItem = recipeId + "_output";
+        if (!this.state.inventory[outputItem]) {
+          this.state.inventory[outputItem] = 0;
+        }
+        this.state.inventory[outputItem] += batches * 2; // 每批产出2单位
+        return `加工了 ${batches} 批 ${recipeId}`;
+      },
+      
+      upgradeWorkshop: function() {
+        this.state.company.workshop_level++;
+        return `加工坊升级到 ${this.state.company.workshop_level} 级`;
+      },
+      
+      fulfillOrder: function(orderId) {
+        const order = this.state.active_orders.find(o => o.order_id === orderId);
+        if (order && !order.completed) {
+          // 检查是否有足够的货物
+          let hasItems = true;
+          for (const [itemId, quantity] of Object.entries(order.required_items)) {
+            if ((this.state.inventory[itemId] || 0) < quantity) {
+              hasItems = false;
+              break;
+            }
+          }
+          
+          if (hasItems) {
+            // 扣除货物
+            for (const [itemId, quantity] of Object.entries(order.required_items)) {
+              this.state.inventory[itemId] -= quantity;
+              if (this.state.inventory[itemId] <= 0) {
+                delete this.state.inventory[itemId];
+              }
+            }
+            
+            // 获得奖励
+            this.state.money += order.reward_money;
+            this.state.particle += order.reward_particles;
+            this.state.prosperity += order.reward_prosperity;
+            order.completed = true;
+            
+            return `订单 "${order.title}" 履约成功，获得奖励！`;
+          } else {
+            return "货物不足，无法履约";
+          }
+        }
+        return "无法履约此订单";
+      },
+      
+      prepareCompany: function() {
+        this.state.company.unlocked = true;
+        this.state.company.employees = 3;
+        return "公司已准备成立";
+      },
+      
+      hireVillagers: function(count) {
+        this.state.company.employees += count;
+        this.state.money -= 200 * count; // 招聘成本
+        return `招聘了 ${count} 名员工`;
+      },
+      
+      distributeDividends: function() {
+        const dividendAmount = Math.floor(this.state.money * 0.1);
+        this.state.money -= dividendAmount;
+        this.state.villagerSupport += 5;
+        return `发放分红 ${dividendAmount} 元，村民支持度提升`;
+      },
+      
+      advancePartnership: function(partner, energyCost) {
+        const progressField = partnershipDefs[partner].progressField;
+        this.state.partnerships[progressField] = Math.min(100, (this.state.partnerships[progressField] || 0) + 10);
+        this.state.energy -= energyCost;
+        return `推进了与${partnershipDefs[partner].label}的合作关系`;
+      },
+      
+      interact: function(characterId) {
+        if (this.state.characters[characterId]) {
+          this.state.characters[characterId].favor = Math.min(100, this.state.characters[characterId].favor + 2);
+          return `与${characterId}互动，好感度提升`;
+        }
+        return "无法与此角色互动";
+      },
+      
+      completeTask: function(taskId) {
+        if (this.state.tasks[taskId]) {
+          this.state.tasks[taskId].claimed = true;
+          this.state.tasks[taskId].status = 'completed';
+          this.state.money += 100; // 完成任务奖励
+          return `完成了任务：${taskId}`;
+        }
+        return "无法完成此任务";
+      },
+      
+      openModeOptions: function(scene, goal) {
+        // 模拟AI生成建议
+        this.state.open_mode.last_options = [
+          `根据当前场景"${scene}"，建议加强与村民的联系`,
+          `考虑投资新的农作物品种以增加收入`,
+          `优化现有资源配置，提高生产效率`
+        ];
+        return this.state.open_mode.last_options;
+      },
+      
+      resolveOpenActionLocal: function(scene, action) {
+        // 模拟执行开放行动
+        this.state.money += 50;
+        this.state.villagerSupport += 2;
+        this.state.open_mode.last_play_result = `执行行动："${action}"，获得了积极反馈`;
+        return this.state.open_mode.last_play_result;
+      }
+    };
+
+    // 游戏数据定义
+    const gameData = {
+      CROPS: {
+        corn: { name: "玉米", seed_cost: 10 },
+        soybean: { name: "大豆", seed_cost: 8 },
+        wheat: { name: "小麦", seed_cost: 12 }
+      },
+      LIVESTOCKS: {
+        chicken: { name: "鸡", product_item_id: "chicken_egg", product_amount: 2 },
+        pig: { name: "猪", product_item_id: "pork", product_amount: 3 }
+      },
+      ITEMS: {
+        corn: { name: "玉米", sell_price: 15 },
+        soybean: { name: "大豆", sell_price: 12 },
+        chicken_egg: { name: "鸡蛋", sell_price: 5 },
+        pork: { name: "猪肉", sell_price: 25 },
+        corn_seed: { name: "玉米种子", sell_price: 8 },
+        soybean_seed: { name: "大豆种子", sell_price: 6 }
+      },
+      RECIPES: {
+        corn_flour: { name: "玉米面粉", inputs: { corn: 3 }, output_item_id: "corn_flour", output_amount: 2, processing_fee: 5 },
+        soy_milk: { name: "豆浆", inputs: { soybean: 2 }, output_item_id: "soy_milk", output_amount: 1, processing_fee: 3 }
+      },
+      CHARACTERS: {
+        liu_huaizhi: { name: "刘怀志", role: "父亲" },
+        liu_xiaoxue: { name: "刘晓雪", role: "姐姐" },
+        yang_dazhen: { name: "杨大振", role: "农学专家" }
+      }
+    };
+
+    // 故事章节定义
+    const storyChapters = [
+      { id: "v1c1", icon: "🌱", title: "开垦荒地", volume: "第一卷", desc: "初来乍到，开垦荒地种植作物", character: "父亲" },
+      { id: "v1c2", icon: "🐓", title: "养殖计划", volume: "第一卷", desc: "考虑发展养殖业增加收入", character: "农学专家" },
+      { id: "v2c1", icon: "🏢", title: "成立公司", volume: "第二卷", desc: "业务扩展，准备成立公司", character: "电商伙伴" },
+      { id: "v3c1", icon: "🤝", title: "合作共赢", volume: "第三卷", desc: "与各方合作，实现共同富裕", character: "政府代表" }
+    ];
+
+    // 任务名称映射
+    const taskNameMap = {
+      main_first_harvest: "主线：首次收获",
+      main_first_stream: "主线：首次直播",
+      main_meet_mentor: "主线：结识导师",
+      side_support_sister: "支线：支持姐姐",
+      side_partner_father: "支线：帮助父亲",
+      daily_plant: "日常：播种",
+      daily_chat: "日常：聊天",
+      daily_stream: "日常：直播",
+      main_processing: "主线：农产品加工",
+      main_hiring: "主线：招聘员工",
+      achievement_harvest_master: "成就：丰收大师",
+      achievement_dividend: "成就：首次分红"
+    };
+
+    // 任务目标映射
+    const taskTargetMap = {
+      main_first_harvest: 2,
+      main_first_stream: 1,
+      main_meet_mentor: 2,
+      side_support_sister: 10,
+      side_partner_father: 10,
+      daily_plant: 1,
+      daily_chat: 1,
+      daily_stream: 1,
+      achievement_harvest_master: 6,
+      main_processing: 2,
+      main_hiring: 3,
+      achievement_dividend: 1
+    };
+
+    // UI状态
+    const uiState = {
+      inventoryFilter: "all",
+      currentChapterId: null,
+      drawerOpen: {
+        farm: true, ranch: false, process: false, orders: false, company: false, 
+        partnership: false, characters: false, inventory: false, tasks: false, 
+        story: false, openmode: false
+      }
+    };
+
+    // 合作定义
+    const partnershipDefs = {
+      science: { label: "科研合作", progressField: "science_progress", unlockedField: "science_unlocked" },
+      government: { label: "政府合作", progressField: "government_progress", unlockedField: "government_unlocked" },
+      business: { label: "企业合作", progressField: "business_progress", unlockedField: "business_unlocked" },
+      village_collective: { label: "村集体合作", progressField: "village_progress", unlockedField: "village_unlocked" }
+    };
+
+    // 辅助函数
+    function getEngine() {
+      return mockEngine;
+    }
+
+    function commit(message) {
+      console.log("Commit:", message);
+      // 更新UI
+      setTimeout(() => {
+        renderAllModules(getEngine());
+      }, 100);
+    }
+
+    function setText(id, value) {
+      const node = document.getElementById(id);
+      if (node) {
+        node.textContent = String(value == null ? "" : value);
+      }
+    }
+
+    function setDrawerState(targetId, open) {
+      const body = document.getElementById(targetId);
+      if (!body) return;
+      body.classList.toggle("is-open", open);
+      const toggle = document.querySelector(`.viz-drawer-toggle[data-drawer-target="${targetId}"]`);
+      if (!toggle) return;
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      const hint = toggle.querySelector("em");
+      if (hint) {
+        hint.textContent = open ? "收起" : "展开";
+      }
+    }
+
+    function toggleDrawer(targetId) {
+      const body = document.getElementById(targetId);
+      if (!body) return;
+      setDrawerState(targetId, !body.classList.contains("is-open"));
+    }
+
+    function labelCategory(category) {
+      const mapping = {
+        all: "全部",
+        crop: "作物",
+        processed: "加工品",
+        livestock: "养殖品",
+        seed: "种子",
+        item: "物品"
+      };
+      return mapping[category] || category;
+    }
+
+    function stageStatus(snapshot) {
+      const stage = String(snapshot && snapshot.stage || "");
+      const turn = Number(snapshot && snapshot.turn || 1);
+      const prosperity = Number(snapshot && snapshot.prosperity || 0);
+      return {
+        v1: true,
+        v2: stage.includes("产业") || stage.includes("公司") || turn >= 8,
+        v3: stage.includes("共同富裕") || prosperity >= 15 || turn >= 20
+      };
+    }
+
+    function currentVolume(snapshot) {
+      const status = stageStatus(snapshot);
+      if (status.v3) return "v3";
+      if (status.v2) return "v2";
+      return "v1";
+    }
+
+    function chapterProgress(chapterId, snapshot) {
+      const base = Math.min(100, Math.max(0, Math.floor((Number(snapshot.turn || 1) / 30) * 100)));
+      if (chapterId.startsWith("v1")) return base;
+      if (chapterId.startsWith("v2")) return Math.max(0, base - 30);
+      return Math.max(0, base - 60);
+    }
+
+    function currentScene(snapshot) {
+      return `刘家村，第 ${snapshot.turn} 天，${snapshot.time}`;
+    }
+
+    function inventoryRows(engine) {
+      const raw = engine.state.inventory || {};
+      return Object.keys(raw).map((itemId) => {
+        const itemDef = gameData.ITEMS[itemId] || null;
+        const cropDef = gameData.CROPS[itemId] || null;
+        const isSeed = itemId.endsWith("_seed");
+        return {
+          id: itemId,
+          label: itemDef ? itemDef.name : cropDef ? cropDef.name : itemId,
+          count: Number(raw[itemId] || 0),
+          category: isSeed ? "seed" : (itemDef && itemDef.category) || (cropDef ? "crop" : "item"),
+          unitPrice: itemDef ? Number(itemDef.sell_price || 0) : 0
+        };
+      });
+    }
+
+    function buildStoryDialog(engine, chapterId) {
+      const snapshot = engine.statusSnapshot();
+      const chapter = storyChapters.find((item) => item.id === chapterId) || storyChapters[0];
+      return {
+        title: `${chapter.volume} · ${chapter.title}`,
+        character: chapter.character,
+        text: `${chapter.desc} 当前是第 ${snapshot.turn} 天，${snapshot.weather}的${snapshot.time}。这一段推进会直接回写到同一份经营状态，而不是独立副本。`,
+        options: [
+          `先处理${chapter.title}相关事务，再看是否需要推进经营。`,
+          "优先照顾家庭与村民感受，稳住支持度。",
+          `把这段剧情和当前第 ${snapshot.turn} 天的经营安排联动起来。`
+        ]
+      };
+    }
+
+    // 渲染函数
+    function renderMetrics(engine) {
+      const snapshot = engine.statusSnapshot();
+      setText("viz-stage-label", snapshot.stage);
+      setText("viz-company-label", snapshot.company);
+      setText("viz-event-label", snapshot.events || "暂无事件");
+      setText("viz-money", snapshot.money);
+      setText("viz-particles", snapshot.particle);
+      setText("viz-energy", snapshot.energy);
+      setText("viz-prosperity", snapshot.prosperity);
+      setText("viz-support", snapshot.villagerSupport);
+      setText("viz-brand", snapshot.brand);
+      setText("viz-farm-caption", `${snapshot.season} · ${snapshot.weather} · 当前可播种 ${Object.keys(engine.availableCrops()).length} 种作物`);
+    }
+
+    function renderLivestockSelect(engine) {
+      const select = document.getElementById("viz-livestock-select");
+      if (!select) return;
+      const current = select.value;
+      const livestockMap = engine.availableLivestock();
+      const ids = Object.keys(livestockMap);
+      if (!ids.length) {
+        select.innerHTML = '<option value="">当前阶段暂无可养殖品种</option>';
+        return;
+      }
+      select.innerHTML = ids.map((id) => `<option value="${id}">${livestockMap[id]}</option>`).join("");
+      if (ids.includes(current)) {
+        select.value = current;
+      }
+    }
+
+    function renderRecipeSelect(engine) {
+      const select = document.getElementById("viz-recipe-select");
+      if (!select) return;
+      const current = select.value;
+      const recipeMap = engine.availableRecipes();
+      const ids = Object.keys(recipeMap);
+      if (!ids.length) {
+        select.innerHTML = '<option value="">未解锁加工配方</option>';
+        return;
+      }
+      select.innerHTML = ids.map((id) => `<option value="${id}">${recipeMap[id]}</option>`).join("");
+      if (ids.includes(current)) {
+        select.value = current;
+      }
+    }
+
+    function renderCropSelect(engine) {
+      const select = document.getElementById("viz-crop-select");
+      if (!select) return;
+      const current = select.value;
+      const cropIds = Object.keys(engine.availableCrops());
+      select.innerHTML = cropIds.map((cropId) => {
+        const crop = gameData.CROPS[cropId];
+        return `<option value="${cropId}">${crop.name} / 成本 ${crop.seed_cost}</option>`;
+      }).join("");
+      if (cropIds.includes(current)) {
+        select.value = current;
+      }
+    }
+
+    function renderFarm(engine) {
+      const root = document.getElementById("viz-farm-grid");
+      if (!root) return;
+      root.innerHTML = engine.state.plots.map((plot) => {
+        const crop = plot.crop_id ? gameData.CROPS[plot.crop_id] : null;
+        const plotClass = plot.ready_to_harvest ? "ready" : (plot.crop_id ? "growing" : "empty");
+        const statusText = plot.ready_to_harvest ? "可收获" : (plot.crop_id ? `剩余 ${plot.days_remaining} 天` : "空闲");
+        const action = plot.ready_to_harvest ? "harvest" : (plot.crop_id ? "story" : "plant");
+        const actionLabel = plot.ready_to_harvest ? "一键收获" : (plot.crop_id ? "跳去剧情页" : "在此播种");
+        const note = plot.ready_to_harvest
+          ? `这块地上的 ${crop.name} 已成熟。当前会调用主静态引擎的收获逻辑。`
+          : plot.crop_id
+            ? `${crop.name} 正在生长，成熟后库存会同步反映到主页与可视化页。`
+            : "点击后按当前选择的作物直接播种。";
+        return `
+          <article class="viz-plot-card ${plotClass}" data-plot-id="${plot.plot_id}">
+            <div class="viz-plot-top">
+              <span class="viz-plot-index">地块 ${plot.plot_id}</span>
+              <span class="viz-plot-status">${statusText}</span>
+            </div>
+            <div class="viz-plot-crop">${crop ? crop.name : "待播种地块"}</div>
+            <div class="viz-plot-note">${note}</div>
+            <button class="viz-plot-action" data-plot-id="${plot.plot_id}" data-plot-action="${action}" type="button">${actionLabel}</button>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderRanch(engine) {
+      const root = document.getElementById("viz-ranch-grid");
+      if (!root) return;
+      const company = engine.state.company || {};
+      const activePens = engine.state.pens.filter((pen) => !!pen.livestock_id).length;
+      setText("viz-ranch-caption", `护栏容量 ${company.ranch_capacity || 4}，已启用 ${activePens}/${engine.state.pens.length} 个棚舍。`);
+      root.innerHTML = engine.state.pens.map((pen) => {
+        const livestockDef = pen.livestock_id ? (gameData.LIVESTOCKS && gameData.LIVESTOCKS[pen.livestock_id]) : null;
+        const title = livestockDef ? livestockDef.name : "空闲棚舍";
+        const status = livestockDef ? (pen.ready_to_collect ? "可收取" : `剩余 ${pen.days_remaining} 天`) : "待投放";
+        const action = pen.ready_to_collect ? "collect" : "raise";
+        const actionLabel = pen.ready_to_collect ? "收取产物" : "开始养殖";
+        return `
+          <article class="viz-ranch-item">
+            <div class="viz-ranch-item-head">
+              <strong>棚舍 ${pen.pen_id} · ${title}</strong>
+              <span class="viz-muted">${status}</span>
+            </div>
+            <p class="viz-muted">${livestockDef ? `产物：${(gameData.ITEMS && gameData.ITEMS[livestockDef.product_item_id] ? gameData.ITEMS[livestockDef.product_item_id].name : livestockDef.product_item_id)} x${livestockDef.product_amount}` : "从上方选择品种后可直接投放。"}</p>
+            <div class="viz-order-item-actions">
+              <button class="viz-btn ghost" data-pen-id="${pen.pen_id}" data-pen-action="${action}" type="button">${actionLabel}</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderProcess(engine) {
+      const root = document.getElementById("viz-process-list");
+      if (!root) return;
+      const recipes = gameData.RECIPES || {};
+      const unlocked = engine.availableRecipes();
+      const workshopLevel = (engine.state.company && engine.state.company.workshop_level) || 1;
+      const processContent = Object.keys(unlocked).length > 0 
+        ? Object.keys(unlocked).map((recipeId) => {
+          const row = recipes[recipeId] || { name: recipeId, inputs: {}, output_item_id: "", output_amount: 0, processing_fee: 0 };
+          const inputText = Object.keys(row.inputs || {}).map((itemId) => {
+            const label = gameData.ITEMS && gameData.ITEMS[itemId] ? gameData.ITEMS[itemId].name : itemId;
+            return `${label} x${row.inputs[itemId]}`;
+          }).join("、") || "无";
+          const outputLabel = gameData.ITEMS && gameData.ITEMS[row.output_item_id] ? gameData.ITEMS[row.output_item_id].name : row.output_item_id;
+          return `
+            <article class="viz-process-item">
+              <div class="viz-process-item-head">
+                <strong>${row.name}</strong>
+                <span class="viz-muted">工费 ${row.processing_fee}</span>
+              </div>
+              <p class="viz-muted">原料：${inputText}</p>
+              <p class="viz-muted">产物：${outputLabel} x${row.output_amount}</p>
+            </article>
+          `;
+        }).join("")
+        : '<div class="viz-process-item"><strong>尚未解锁加工配方</strong><p class="viz-muted">先在系统技能中解锁"农产品加工坊"。</p></div>';
+
+      root.innerHTML = `
+        ${processContent}
+        <div class="viz-order-item-actions">
+          <label class="viz-inline-field">加工配方 <select id="viz-recipe-select"></select></label>
+          <label class="viz-inline-field">批次 <select id="viz-batches-select">
+            <option value="1">1批</option>
+            <option value="2">2批</option>
+            <option value="3">3批</option>
+            <option value="5">5批</option>
+            <option value="10">10批</option>
+          </select></label>
+          <button id="viz-process-run" class="viz-btn accent" type="button">执行加工</button>
+          <button id="viz-workshop-upgrade" class="viz-btn ghost" type="button">升级加工坊</button>
+        </div>
+      `;
+      setText("viz-process-caption", `加工坊 Lv.${workshopLevel}，已开放 ${Object.keys(unlocked).length} 个配方。`);
+    }
+
+    function renderOrders(engine) {
+      const root = document.getElementById("viz-orders-list");
+      if (!root) return;
+      const openOrders = (engine.state.active_orders || []).filter((order) => !order.completed);
+      setText("viz-orders-caption", `当前可履约订单 ${openOrders.length} 条。`);
+      if (!openOrders.length) {
+        root.innerHTML = '<div class="viz-order-item"><strong>暂无可执行订单</strong><p class="viz-muted">推进天数后会刷新订单池。</p></div>';
+        return;
+      }
+      root.innerHTML = openOrders.map((order) => {
+        const required = Object.keys(order.required_items || {}).map((itemId) => {
+          const name = gameData.ITEMS && gameData.ITEMS[itemId] ? gameData.ITEMS[itemId].name : itemId;
+          return `${name} x${order.required_items[itemId]}`;
+        }).join("、");
+        return `
+          <article class="viz-order-item">
+            <div class="viz-order-item-head">
+              <strong>${order.title}</strong>
+              <span class="viz-muted">奖励 ${order.reward_money} 元</span>
+            </div>
+            <p class="viz-muted">需求：${required}</p>
+            <p class="viz-muted">额外：+${order.reward_particles} 微粒 · +${order.reward_prosperity} 共富</p>
+            <div class="viz-order-item-actions">
+              <button class="viz-btn" data-order-id="${order.order_id}" type="button">交付订单</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderCompany(engine) {
+      const root = document.getElementById("viz-company-list");
+      if (!root) return;
+      const company = engine.state.company || {};
+      setText("viz-company-caption", `${company.unlocked ? "已成立" : "未成立"} · 员工 ${company.employees} · 分红率 ${Math.round((company.dividend_rate || 0) * 100)}%`);
+      const rows = [
+        ["品牌等级", company.brand_level],
+        ["品牌热度", company.brand_score],
+        ["员工士气", company.employee_morale],
+        ["公司储备金", company.cash_reserve],
+        ["利润池", company.profit_pool],
+        ["村民支持度", company.support_score]
+      ];
+      root.innerHTML = `
+        ${rows.map((row) => `<div class="viz-company-item"><strong>${row[0]}</strong><p class="viz-muted">${row[1]}</p></div>`).join("")}
+        <div class="viz-order-item-actions">
+          ${!company.unlocked ? `<button class="viz-btn" data-company-action="prepare" type="button">准备成立公司</button>` : ''}
+          <button class="viz-btn ghost" data-company-action="hire" type="button">招聘员工</button>
+          <button class="viz-btn accent" data-company-action="dividend" type="button">发放分红</button>
+        </div>
+      `;
+    }
+
+    function renderPartnership(engine) {
+      const root = document.getElementById("viz-partnership-list");
+      if (!root) return;
+      const state = engine.state.partnerships || {};
+      const unlockedCount = Object.keys(partnershipDefs).filter((key) => !!state[partnershipDefs[key].unlockedField]).length;
+      setText("viz-partnership-caption", `已解锁 ${unlockedCount}/4 条长期合作线。`);
+
+      root.innerHTML = `
+        ${Object.keys(partnershipDefs).map((key) => {
+          const def = partnershipDefs[key];
+          const progress = Number(state[def.progressField] || 0);
+          const unlocked = !!state[def.unlockedField];
+          return `
+            <article class="viz-partnership-item">
+              <div class="viz-partnership-line">
+                <strong>${def.label}</strong>
+                <span class="viz-muted">${progress}% ${unlocked ? "· 已解锁" : ""}</span>
+              </div>
+              <progress max="100" value="${progress}"></progress>
+              <div class="viz-order-item-actions">
+                <button class="viz-btn ghost" data-partner="${key}" type="button">投入源能推进</button>
+              </div>
+            </article>
+          `;
+        }).join("")}
+        <div class="viz-order-item-actions">
+          <label class="viz-inline-field">投入源能 <input id="viz-partnership-cost" type="number" min="1" max="100" value="10" /></label>
+        </div>
+      `;
+    }
+
+    function renderCharacters(engine) {
+      const root = document.getElementById("viz-character-list");
+      if (!root) return;
+      const defs = (gameData.CHARACTERS && Object.keys(gameData.CHARACTERS).length) ? gameData.CHARACTERS : { 
+        liu_huaizhi: { name: "刘怀志", role: "父亲" },
+        liu_xiaoxue: { name: "刘晓雪", role: "姐姐" },
+        yang_dazhen: { name: "杨大振", role: "农学专家" }
+      };
+      const keys = Object.keys(defs);
+      setText("viz-character-caption", `在编村民 ${engine.state.company.employees} 名，角色关系网 ${keys.length} 人。`);
+      root.innerHTML = keys.map((characterId) => {
+        const def = defs[characterId] || { name: characterId, role: "角色" };
+        const state = (engine.state.characters && engine.state.characters[characterId]) || { favor: 0 };
+        return `
+          <article class="viz-character-item">
+            <div class="viz-character-item-head">
+              <strong>${def.name}</strong>
+              <span class="viz-muted">${def.role} · 好感 ${state.favor}</span>
+            </div>
+            <div class="viz-character-item-actions">
+              <button class="viz-btn ghost" data-character-id="${characterId}" type="button">发起互动</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderInventory(engine) {
+      const root = document.getElementById("viz-inventory-list");
+      if (!root) return;
+      const rows = inventoryRows(engine).filter((row) => uiState.inventoryFilter === "all" || row.category === uiState.inventoryFilter);
+      if (!rows.length) {
+        root.innerHTML = '<div class="viz-inventory-item"><div><strong>当前筛选下没有物品</strong><p class="viz-muted">推进一天、收获、养殖或回主页执行销售后这里会变化。</p></div></div>';
+        return;
+      }
+      root.innerHTML = rows.map((row) => `
+        <div class="viz-inventory-item">
+          <div>
+            <strong>${row.label}</strong>
+            <p class="viz-muted">分类：${labelCategory(row.category)}${row.unitPrice ? ` · 基础售价 ${row.unitPrice}` : ""}</p>
+          </div>
+          <strong>x${row.count}</strong>
+        </div>
+      `).join("");
+    }
+
+    function renderTasks(engine) {
+      const root = document.getElementById("viz-task-list");
+      if (!root) return;
+      const rows = Object.keys(engine.state.tasks || {}).map((taskId) => {
+        const task = engine.state.tasks[taskId];
+        const total = Number(taskTargetMap[taskId] || Math.max(Number(task.progress || 0), 1));
+        return {
+          id: taskId,
+          title: taskNameMap[taskId] || taskId,
+          progress: Math.min(Number(task.progress || 0), total),
+          total,
+          claimed: !!task.claimed,
+          status: task.status || 'available'
+        };
+      });
+      const completed = rows.filter((row) => row.claimed).length;
+      setText("viz-task-count", `${completed}/${rows.length}`);
+      root.innerHTML = rows.slice(0, 8).map((row) => `
+        <div class="viz-task-item">
+          <strong>${row.title}</strong>
+          <p class="viz-muted">${row.claimed ? "已完成" : `进度 ${row.progress}/${row.total}`}</p>
+          <progress max="${row.total}" value="${row.progress}"></progress>
+          ${!row.claimed && row.status !== 'completed' ? `<div class="viz-order-item-actions"><button class="viz-btn" data-task-id="${row.id}" type="button">完成任务</button></div>` : ''}
+        </div>
+      `).join("");
+    }
+
+    function renderStoryTimeline(engine) {
+      const root = document.getElementById("viz-story-timeline");
+      if (!root) return;
+      const snapshot = engine.statusSnapshot();
+      const unlock = stageStatus(snapshot);
+      const volume = currentVolume(snapshot);
+      root.innerHTML = storyChapters.map((chapter) => {
+        const chapterVolume = chapter.id.slice(0, 2);
+        const unlocked = unlock[chapterVolume];
+        const current = chapterVolume === volume;
+        return `
+          <div class="viz-story-node ${unlocked ? (current ? "current" : "available") : "locked"}">
+            <strong>${chapter.icon} ${chapter.title}</strong>
+            <p class="viz-muted">${chapter.volume} · ${chapter.desc}</p>
+            <p class="viz-muted">推进度 ${chapterProgress(chapter.id, snapshot)}%</p>
+            <button class="viz-story-open viz-btn ${unlocked ? "" : "ghost"}" ${unlocked ? "" : "disabled"} data-story-open="${chapter.id}" type="button">${unlocked ? "进入章节" : "尚未解锁"}</button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderStoryPanel(engine) {
+      const panel = document.getElementById("viz-story-panel");
+      if (!panel || !uiState.currentChapterId) return;
+      const dialog = buildStoryDialog(engine, uiState.currentChapterId);
+      panel.hidden = false;
+      setText("viz-story-title", dialog.title);
+      setText("viz-story-character", `主导角色：${dialog.character}`);
+      setText("viz-story-text", dialog.text);
+      const optionsRoot = document.getElementById("viz-story-options");
+      if (optionsRoot) {
+        optionsRoot.innerHTML = dialog.options.map((option, index) => `<button class="viz-story-option" data-story-choice="${index}" type="button">${option}</button>`).join("");
+      }
+    }
+
+    function renderOpenMode(engine) {
+      const root = document.getElementById("viz-open-suggestions");
+      const result = document.getElementById("viz-open-result");
+      if (!root || !result) return;
+      const openMode = engine.state.open_mode || {};
+      const options = (openMode.last_options || []).slice(0, 3);
+      let content = '';
+      if (!options.length) {
+        content = '<div class="viz-open-option"><strong>尚未生成建议</strong><p class="viz-muted">点"生成行动建议"后，这里会出现可执行方案。</p></div>';
+      } else {
+        content = options.map((text, index) => `<div class="viz-open-option"><button data-open-option="${index}" type="button">${text}</button></div>`).join("");
+      }
+      // 添加建议生成和自定义行动输入
+      content += `
+        <div class="viz-open-controls">
+          <button id="viz-open-suggest" class="viz-btn ghost" type="button">生成行动建议</button>
+          <div class="viz-open-input-group">
+            <input id="viz-open-input" type="text" placeholder="输入自定义行动...">
+            <button id="viz-open-run" class="viz-btn accent" type="button">执行</button>
+          </div>
+        </div>
+      `;
+      root.innerHTML = content;
+      result.textContent = openMode.last_play_result || "执行结果会显示在这里。";
+    }
+
+    function openStoryChapter(chapterId) {
+      uiState.currentChapterId = chapterId;
+      renderStoryPanel(getEngine());
+      const resultRoot = document.getElementById("viz-story-result");
+      if (resultRoot) {
+        resultRoot.textContent = "选择一项剧情行动后，这里的结算结果会同步写入当前局。";
+      }
+    }
+
+    function executeStoryChoice(index) {
+      const engine = getEngine();
+      const dialog = buildStoryDialog(engine, uiState.currentChapterId || "v1c1");
+      const choiceText = dialog.options[index] || dialog.options[0];
+      const result = engine.playPanelModeAction(currentScene(engine.statusSnapshot()), `${dialog.title}：${choiceText}`);
+      commit();
+      const resultRoot = document.getElementById("viz-story-result");
+      if (resultRoot) {
+        resultRoot.textContent = result;
+      }
+    }
+
+    function refreshSuggestions() {
+      const engine = getEngine();
+      const snapshot = engine.statusSnapshot();
+      const goalInput = document.getElementById("viz-open-goal");
+      const goal = goalInput ? String(goalInput.value || "").trim() : "稳住现金流，同时提升村民支持度和品牌认可度。";
+      engine.openModeOptions(currentScene(snapshot), goal || "稳住现金流，同时提升村民支持度和品牌认可度。");
+      commit("已刷新可视化行动建议。");
+    }
+
+    function executeOpenAction(actionText) {
+      const engine = getEngine();
+      const result = engine.resolveOpenActionLocal(currentScene(engine.statusSnapshot()), actionText);
+      commit();
+      const resultRoot = document.getElementById("viz-open-result");
+      if (resultRoot) {
+        resultRoot.textContent = result;
+      }
+    }
+
+    function renderAllModules(engine) {
+      renderMetrics(engine);
+      renderCropSelect(engine);
+      renderLivestockSelect(engine);
+      renderRecipeSelect(engine);
+      renderFarm(engine);
+      renderRanch(engine);
+      renderProcess(engine);
+      renderOrders(engine);
+      renderCompany(engine);
+      renderPartnership(engine);
+      renderCharacters(engine);
+      renderInventory(engine);
+      renderTasks(engine);
+      renderStoryTimeline(engine);
+      renderStoryPanel(engine);
+      renderOpenMode(engine);
+    }
+
+    function bindEvents() {
+      // 统一事件委托：抽屉toggle事件提升到document，保证任何位置都能响应
+      document.addEventListener("click", (event) => {
+        // 抽屉展开/收起
+        const toggle = event.target.closest(".viz-drawer-toggle[data-drawer-target]");
+        if (toggle) {
+          toggleDrawer(toggle.getAttribute("data-drawer-target"));
+          return;
+        }
+      });
+
+      // 其它交互仍挂在 .viz-module-grid 上
+      document.getElementById("viz-module-grid")?.addEventListener("click", (event) => {
+        // 农场：推进一天
+        if (event.target.closest("#viz-advance-day")) {
+          const message = getEngine().advanceDay();
+          commit(message);
+          renderAllModules(getEngine());
+          return;
+        }
+        // 农场：地块操作
+        const plotBtn = event.target.closest("[data-plot-action]");
+        if (plotBtn) {
+          const plotId = Number(plotBtn.getAttribute("data-plot-id") || 0);
+          const action = plotBtn.getAttribute("data-plot-action");
+          const engine = getEngine();
+          if (action === "plant") {
+            const cropId = document.getElementById("viz-crop-select")?.value;
+            if (!cropId) return;
+            commit(engine.plantCrop(plotId, cropId));
+            renderAllModules(engine);
+            return;
+          }
+          if (action === "harvest") {
+            commit(engine.harvestAll());
+            renderAllModules(engine);
+            return;
+          }
+          if (action === "story") {
+            alert("跳转到剧情页面");
+          }
+          return;
+        }
+        // 养殖：扩栏
+        if (event.target.closest("#viz-ranch-expand")) {
+          commit(getEngine().expandRanch(1));
+          renderAllModules(getEngine());
+          return;
+        }
+        // 养殖：收取产物
+        if (event.target.closest("#viz-ranch-collect")) {
+          commit(getEngine().collectLivestockProducts());
+          renderAllModules(getEngine());
+          return;
+        }
+        // 养殖：棚舍操作
+        const penBtn = event.target.closest("[data-pen-action]");
+        if (penBtn) {
+          const penId = Number(penBtn.getAttribute("data-pen-id") || 0);
+          const action = penBtn.getAttribute("data-pen-action");
+          if (action === "collect") {
+            commit(getEngine().collectLivestockProducts());
+            renderAllModules(getEngine());
+            return;
+          }
+          const livestockId = document.getElementById("viz-livestock-select")?.value;
+          if (!livestockId) {
+            alert("当前阶段暂无可投放养殖品种。");
+            return;
+          }
+          commit(getEngine().raiseLivestock(penId, livestockId));
+          renderAllModules(getEngine());
+          return;
+        }
+        // 订单履约操作
+        const orderBtn = event.target.closest("[data-order-id]");
+        if (orderBtn) {
+          const orderId = orderBtn.getAttribute("data-order-id");
+          commit(getEngine().fulfillOrder(orderId));
+          renderAllModules(getEngine());
+          return;
+        }
+        // 公司治理操作
+        const companyBtn = event.target.closest("[data-company-action]");
+        if (companyBtn) {
+          const action = companyBtn.getAttribute("data-company-action");
+          const engine = getEngine();
+          if (action === "prepare") {
+            commit(engine.prepareCompany());
+          } else if (action === "hire") {
+            commit(engine.hireVillagers(1));
+          } else if (action === "dividend") {
+            commit(engine.distributeDividends());
+          }
+          renderAllModules(getEngine());
+          return;
+        }
+        // 合作推进操作
+        const partnerBtn = event.target.closest("[data-partner]");
+        if (partnerBtn) {
+          const partner = partnerBtn.getAttribute("data-partner");
+          commit(getEngine().advancePartnership(partner, 10)); // 默认投入10源能
+          renderAllModules(getEngine());
+          return;
+        }
+        // 角色互动操作
+        const charBtn = event.target.closest("[data-character-id]");
+        if (charBtn) {
+          const charId = charBtn.getAttribute("data-character-id");
+          commit(getEngine().interact(charId));
+          renderAllModules(getEngine());
+          return;
+        }
+        // 任务操作
+        const taskBtn = event.target.closest("[data-task-id]");
+        if (taskBtn) {
+          const taskId = taskBtn.getAttribute("data-task-id");
+          commit(getEngine().completeTask(taskId));
+          renderAllModules(getEngine());
+          return;
+        }
+      });
+
+      // 加工车间操作
+      document.getElementById("viz-process-run")?.addEventListener("click", () => {
+        const recipeId = document.getElementById("viz-recipe-select")?.value;
+        const batches = Number(document.getElementById("viz-batches-select")?.value || 1);
+        if (!recipeId) {
+          alert("当前没有可用配方。");
+          return;
+        }
+        commit(getEngine().processGoods(recipeId, batches));
+        renderAllModules(getEngine());
+      });
+
+      document.getElementById("viz-workshop-upgrade")?.addEventListener("click", () => {
+        commit(getEngine().upgradeWorkshop());
+        renderAllModules(getEngine());
+      });
+
+      // 库存筛选操作
+      document.getElementById("viz-inventory-filters")?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-filter]");
+        if (!button) return;
+        uiState.inventoryFilter = button.getAttribute("data-filter") || "all";
+        document.querySelectorAll("#viz-inventory-filters [data-filter]").forEach((node) => {
+          node.classList.toggle("active", node === button);
+        });
+        renderInventory(getEngine());
+      });
+
+      // 剧情时间线操作
+      document.getElementById("viz-story-timeline")?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-story-open]");
+        if (!button) return;
+        openStoryChapter(button.getAttribute("data-story-open") || "v1c1");
+      });
+
+      document.getElementById("viz-story-options")?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-story-choice]");
+        if (!button) return;
+        executeStoryChoice(Number(button.getAttribute("data-story-choice") || 0));
+      });
+
+      document.getElementById("viz-story-close")?.addEventListener("click", () => {
+        uiState.currentChapterId = null;
+        const panel = document.getElementById("viz-story-panel");
+        if (panel) panel.hidden = true;
+      });
+
+      // 开放玩法操作
+      document.getElementById("viz-open-suggest")?.addEventListener("click", refreshSuggestions);
+
+      document.getElementById("viz-open-suggestions")?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-open-option]");
+        if (!button) return;
+        const index = Number(button.getAttribute("data-open-option") || 0);
+        const options = ((getEngine().state.open_mode || {}).last_options || []).slice(0, 3);
+        if (options[index]) {
+          executeOpenAction(options[index]);
+        }
+      });
+
+      document.getElementById("viz-open-run")?.addEventListener("click", () => {
+        const input = document.getElementById("viz-open-input");
+        const value = input ? String(input.value || "").trim() : "";
+        if (!value) return;
+        executeOpenAction(value);
+        input.value = "";
+      });
+    }
+
+    // 初始化
+    document.addEventListener("DOMContentLoaded", function () {
+      if (document.getElementById("viz-module-grid")) {
+        renderAllModules(getEngine());
+        bindEvents();
+      }
+    });
+  </script>
+</body>
+</html>

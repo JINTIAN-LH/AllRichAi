@@ -12,8 +12,20 @@ SOURCE_DIR = ROOT / "release_src"
 DIST_DIR = ROOT / "dist"
 ZIP_PATH = ROOT / "dist-static-upload.zip"
 
+REQUIRED_RELATIVE_FILES = (
+    Path("index.html"),
+    Path("assets") / "styles.css",
+    Path("assets") / "app.js",
+)
+
 MAX_SINGLE_FILE = 10 * 1024 * 1024  # 10MB
 MAX_TOTAL_SIZE = 50 * 1024 * 1024  # 50MB
+
+
+def _iter_files(base_dir: Path):
+    for path in base_dir.rglob("*"):
+        if path.is_file():
+            yield path
 
 
 def _parse_args() -> argparse.Namespace:
@@ -33,17 +45,15 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _ensure_source_ready() -> None:
-    required = [
-        SOURCE_DIR / "index.html",
-        SOURCE_DIR / "assets" / "styles.css",
-        SOURCE_DIR / "assets" / "app.js",
-    ]
-    missing = [str(p.relative_to(ROOT)) for p in required if not p.exists()]
+def _ensure_required_files(base_dir: Path, label: str) -> None:
+    required = [base_dir / rel for rel in REQUIRED_RELATIVE_FILES]
+    missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:
-        raise FileNotFoundError(
-            "release_src 缺少必要文件: " + ", ".join(missing)
-        )
+        raise FileNotFoundError(f"{label} 缺少必要文件: " + ", ".join(missing))
+
+
+def _ensure_source_ready() -> None:
+    _ensure_required_files(SOURCE_DIR, "release_src")
 
 
 def _rebuild_dist() -> None:
@@ -53,16 +63,7 @@ def _rebuild_dist() -> None:
 
 
 def _ensure_dist_ready() -> None:
-    required = [
-        DIST_DIR / "index.html",
-        DIST_DIR / "assets" / "styles.css",
-        DIST_DIR / "assets" / "app.js",
-    ]
-    missing = [str(p.relative_to(ROOT)) for p in required if not p.exists()]
-    if missing:
-        raise FileNotFoundError(
-            "dist 缺少必要文件，无法回写到 release_src: " + ", ".join(missing)
-        )
+    _ensure_required_files(DIST_DIR, "dist")
 
 
 def _sync_dist_to_source() -> None:
@@ -94,9 +95,7 @@ def _run_project_sync_hook() -> None:
 def _collect_sizes() -> tuple[int, list[tuple[str, int]]]:
     files: list[tuple[str, int]] = []
     total = 0
-    for p in DIST_DIR.rglob("*"):
-        if not p.is_file():
-            continue
+    for p in _iter_files(DIST_DIR):
         size = p.stat().st_size
         rel = str(p.relative_to(DIST_DIR)).replace("\\", "/")
         files.append((rel, size))
@@ -109,9 +108,8 @@ def _create_zip() -> None:
     if ZIP_PATH.exists():
         ZIP_PATH.unlink()
     with zipfile.ZipFile(ZIP_PATH, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        for p in DIST_DIR.rglob("*"):
-            if p.is_file():
-                zf.write(p, arcname=str(p.relative_to(DIST_DIR)).replace("\\", "/"))
+        for p in _iter_files(DIST_DIR):
+            zf.write(p, arcname=str(p.relative_to(DIST_DIR)).replace("\\", "/"))
 
 
 def _print_report(total: int, files: list[tuple[str, int]]) -> None:

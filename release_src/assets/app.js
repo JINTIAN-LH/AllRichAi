@@ -11,14 +11,25 @@
     { name: "成长型", values: [105, 12, 0.95, 1.2, 1.15] },
     { name: "高风险型", values: [135, 20, 1.25, 1.45, 1.35] }
   ];
+  const STYLE_TEMPLATE = [
+    "风格样板（请模仿结构与语气，不要逐字照抄）：",
+    "1) 开头先写场景气味与人物处境；",
+    "2) 给出系统提示（如【叮！】、当前资源、目标）；",
+    "3) 中段写行动经过与人物反馈；",
+    "4) 结尾给出可执行的行动选择；",
+    "5) 文字要有生活感，避免摘要口吻。",
+    "示例语气关键词：重生归乡、村庄日常、泥土与青草味、系统激活、低压力但有后果。"
+  ].join("\n");
 
   const { StaticGameEngine, gameData } = window.AllRichGameEngine;
+  const stateSubscribers = new Set();
 
   let engine = loadEngine();
   let bridgeConfig = loadBridgeConfig();
   let activePage = "home";
   let profilePromptShown = false;
   let flashMuted = false;
+  let bridgeConnectivityState = { tested: false, healthy: false, mode: "proxy" };
 
   if (engine.state.open_mode.profile_saved && !engine.state.open_mode.last_options.length) {
     engine.openModeOptions(getSceneForTurn(), DEFAULT_GOAL);
@@ -150,6 +161,277 @@
     headers[headerName] = key;
   }
 
+  function detectBridgeMode(endpoint) {
+    const safe = String(endpoint || "").trim().toLowerCase();
+    if (!safe) return "proxy";
+    if (safe.includes("open-resolve") || safe.includes("/open_resolve") || safe.includes("mode=health")) {
+      return "proxy";
+    }
+    return "openai-compatible";
+  }
+
+  function normalizeOpenAiChatEndpoint(endpoint) {
+    const raw = String(endpoint || "").trim();
+    if (!raw) return "";
+    const clean = raw.replace(/\/+$/, "");
+    if (/\/chat\/completions$/i.test(clean)) {
+      return clean;
+    }
+    return `${clean}/chat/completions`;
+  }
+
+  function extractChatText(payload) {
+    if (!payload || typeof payload !== "object") return "";
+    if (typeof payload.text === "string" && payload.text.trim()) return payload.text.trim();
+    if (typeof payload.output === "string" && payload.output.trim()) return payload.output.trim();
+    if (typeof payload.content === "string" && payload.content.trim()) return payload.content.trim();
+    const choice = payload.choices && payload.choices[0];
+    const content = choice && choice.message && choice.message.content;
+    if (typeof content === "string") return content.trim();
+    if (Array.isArray(content)) {
+      return content
+        .map((part) => (typeof part === "string" ? part : (part && part.text) || ""))
+        .join("\n")
+        .trim();
+    }
+    return "";
+  }
+
+  function extractJsonFromText(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch (_) {
+    }
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        const parsed = JSON.parse(raw.slice(start, end + 1));
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch (_) {
+      }
+    }
+    return null;
+  }
+
+  function sanitizeOptionText(text) {
+    const safe = String(text || "").trim().replace(/\s+/g, " ");
+    if (!safe) return "";
+    const cleaned = safe.replace(/[A-Za-z_][A-Za-z0-9_\-:.]*/g, "").replace(/\s+/g, " ").trim();
+    if (cleaned.length >= 8) return cleaned;
+    return safe;
+  }
+
+  function sanitizeOptionItem(item) {
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      const candidates = [item.text, item.option, item.action, item.title, item.description, item.content]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+      if (candidates.length) return sanitizeOptionText(candidates[0]);
+    }
+    return sanitizeOptionText(String(item || ""));
+  }
+
+  function containsEnglishToken(text) {
+    return /[A-Za-z]{2,}/.test(String(text || ""));
+  }
+
+  function localizeDisplayText(text) {
+    let localized = String(text || "");
+    const replacements = [
+      [/\bmoney\b/gi, "资金"],
+      [/\bparticles\b/gi, "微粒"],
+      [/\bprosperity\b/gi, "共富"],
+      [/\blaziness\b/gi, "躺平值"],
+      [/\bsource_energy\b/gi, "源能"],
+      [/\benergy\b/gi, "源能"],
+      [/\beffects?\b/gi, "效果"],
+      [/\breward\b/gi, "收益"],
+      [/\bcost\b/gi, "成本"],
+      [/\brisk\b/gi, "风险"],
+      [/\boption\b/gi, "选项"],
+      [/\baction\b/gi, "行动"]
+    ];
+    replacements.forEach(([pattern, value]) => {
+      localized = localized.replace(pattern, value);
+    });
+    return localized;
+  }
+
+  function sanitizeResultText(text) {
+    const localized = localizeDisplayText(text);
+    if (!containsEnglishToken(localized)) return localized.trim();
+    const cleaned = localized
+      .replace(/[A-Za-z_][A-Za-z0-9_\-:.]*/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (cleaned.length >= 24) return cleaned;
+    return "你完成了本轮行动，过程以务实推进为主，村民协作意愿上升，经营状态同步更新。";
+  }
+
+  function ensureOpenResultLength(text, scene, actionText, effects) {
+    const safe = String(text || "").trim();
+    if (safe.length >= 200) return safe;
+    const fallback = engine.buildRichResultText(scene, actionText, effects);
+    if (!safe) return fallback;
+    const extended = `${safe}\n\n补充说明：你在“${scene}”推进“${actionText}”后，现场反馈显示协作效率与执行确定性都在上升。` +
+      `本次结算：资金 ${effects.money >= 0 ? "+" : ""}${effects.money}，微粒 ${effects.particles >= 0 ? "+" : ""}${effects.particles}，` +
+      `共富 ${effects.prosperity >= 0 ? "+" : ""}${effects.prosperity}，躺平值 ${effects.laziness >= 0 ? "+" : ""}${effects.laziness}。`;
+    if (extended.length >= 200) return extended;
+    return `${extended}\n\n${fallback}`;
+  }
+
+  function normalizeEffects(rawEffects, actionText) {
+    const base = Object.assign({}, engine.deriveOpenEffects(actionText));
+    const source = rawEffects && typeof rawEffects === "object" ? rawEffects : {};
+    ["money", "particles", "prosperity", "laziness"].forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        const parsed = Number(source[key]);
+        if (!Number.isNaN(parsed)) {
+          base[key] = Math.trunc(parsed);
+        }
+      }
+    });
+    return base;
+  }
+
+  function sanitizeRemoteResolvePayload(payload, scene, actionText) {
+    const source = payload && typeof payload === "object" ? payload : {};
+    const effects = normalizeEffects(source.effects, actionText);
+    const rawText = source.text || source.result || source.output || source.content || "";
+    const cleanedText = ensureOpenResultLength(sanitizeResultText(String(rawText || "")), scene, actionText, effects);
+    const cleanedNext = Array.isArray(source.next_options || source.options)
+      ? (source.next_options || source.options).map(sanitizeOptionItem).filter(Boolean).slice(0, 3)
+      : [];
+    return {
+      text: cleanedText,
+      effects,
+      next_options: cleanedNext
+    };
+  }
+
+  function getOpenModeContext() {
+    const snapshot = engine.statusSnapshot();
+    return Object.assign({}, snapshot, {
+      player_name: engine.state.player_profile.name,
+      player_identity: engine.state.player_profile.identity,
+      player_return_reason: engine.state.player_profile.return_reason
+    });
+  }
+
+  function buildOpenOptionsPayload(scene, goal) {
+    return {
+      mode: "open_options",
+      instruction: "你是乡村经营文字游戏的叙事引擎。请给出3个中文行动选项，每项都要包含具体动作+预期后果，语气贴近‘重生归乡/系统激活/村庄生活’叙事风格，不要英文字段。",
+      style_template: STYLE_TEMPLATE,
+      scene,
+      goal,
+      player: {
+        name: engine.state.player_profile.name || "刘洋",
+        identity: engine.state.player_profile.identity || "回乡青年",
+        return_reason: engine.state.player_profile.return_reason || "希望在乡村重建生活"
+      },
+      context: getOpenModeContext(),
+      option_count: 3
+    };
+  }
+
+  function buildOpenResolvePayload(scene, actionText) {
+    return {
+      mode: "open_resolve",
+      instruction: "你是乡村经营文字游戏裁判。根据玩家行动输出结果与数值变化。文本必须有画面感与生活细节，风格参考‘回乡开篇叙事’，并体现角色关系、经营后果与次日可持续行动。",
+      style_template: STYLE_TEMPLATE,
+      scene,
+      selected_action: actionText,
+      player: {
+        name: engine.state.player_profile.name || "刘洋",
+        identity: engine.state.player_profile.identity || "回乡青年",
+        return_reason: engine.state.player_profile.return_reason || "希望在乡村重建生活"
+      },
+      context: getOpenModeContext(),
+      constraints: {
+        world: "现代乡村经营",
+        no_forced_romance: true,
+        avoid_illegal: true,
+        tone: "治愈、务实、有后果"
+      },
+      output_requirements: {
+        text_length: "220-420中文字符",
+        must_include: ["场景细节", "行动过程", "人物反馈", "经营后果"],
+        no_english_keys: true
+      }
+    };
+  }
+
+  async function postBridgePayload(payload) {
+    const mode = detectBridgeMode(bridgeConfig.endpoint);
+    const controller = new AbortController();
+    const securityMeta = buildSecurityMeta();
+    const timeoutId = window.setTimeout(() => controller.abort(), bridgeConfig.timeoutMs);
+    try {
+      const headers = { "Content-Type": "application/json" };
+      applyBridgeAuthHeader(headers);
+      let response;
+      let data;
+      if (mode === "proxy") {
+        if (securityMeta) {
+          headers["X-TF-Timestamp"] = String(securityMeta.timestamp);
+          headers["X-TF-Nonce"] = securityMeta.nonce;
+          headers["X-TF-Signature"] = securityMeta.signature;
+          if (securityMeta.clientId) headers["X-TF-Client-Id"] = securityMeta.clientId;
+          if (securityMeta.signVersion) headers["X-TF-Sign-Version"] = securityMeta.signVersion;
+        }
+        response = await fetch(bridgeConfig.endpoint, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(Object.assign({}, payload, { model: bridgeConfig.model || undefined, security: securityMeta })),
+          signal: controller.signal
+        });
+        data = await response.json().catch(() => ({}));
+      } else {
+        response = await fetch(normalizeOpenAiChatEndpoint(bridgeConfig.endpoint), {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            model: bridgeConfig.model || "qwen3-max",
+            messages: [
+              { role: "system", content: "你是乡村经营游戏引擎。请严格返回 JSON，不要返回额外解释。" },
+              { role: "user", content: JSON.stringify(payload) }
+            ],
+            temperature: 0.7,
+            stream: false
+          }),
+          signal: controller.signal
+        });
+        const parsed = await response.json().catch(() => ({}));
+        data = extractJsonFromText(extractChatText(parsed)) || {};
+      }
+      if (!response.ok) {
+        throw new Error((data && (data.message || data.error && data.error.message)) || `HTTP ${response.status}`);
+      }
+      return data || {};
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  }
+
+  async function generateRemoteOpenOptions(scene, goal) {
+    const payload = await postBridgePayload(buildOpenOptionsPayload(scene, goal));
+    const rawOptions = Array.isArray(payload.options) ? payload.options : [];
+    const options = rawOptions.map(sanitizeOptionItem).filter(Boolean).slice(0, 3);
+    if (!options.length) {
+      throw new Error("接口返回中没有可用的行动建议");
+    }
+    engine.state.open_mode.last_scene = scene;
+    engine.state.open_mode.last_goal = goal;
+    engine.state.open_mode.last_options = options;
+    engine.state.open_mode.options_ready = true;
+    return options;
+  }
+
   function showLoading(show) {
     const mask = document.getElementById("loading-mask");
     if (!mask) return;
@@ -195,6 +477,38 @@
     renderAll();
     maybePromptProfile();
     if (flashMessage) showFlash(flashMessage);
+    notifyStateSubscribers();
+  }
+
+  function notifyStateSubscribers() {
+    stateSubscribers.forEach((callback) => {
+      try {
+        callback(engine);
+      } catch (_) {
+      }
+    });
+  }
+
+  function subscribeState(callback) {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+    stateSubscribers.add(callback);
+    try {
+      callback(engine);
+    } catch (_) {
+    }
+    return () => {
+      stateSubscribers.delete(callback);
+    };
+  }
+
+  function replaceEngine(nextEngine, flashMessage) {
+    if (!nextEngine) return engine;
+    engine = nextEngine;
+    profilePromptShown = !!(engine.state && engine.state.open_mode && engine.state.open_mode.profile_saved);
+    persistState(flashMessage);
+    return engine;
   }
 
   function withEngine(action) {
@@ -283,9 +597,16 @@
     signEnabled.checked = !!bridgeConfig.signEnabled;
     clientId.value = bridgeConfig.clientId || "";
     signVersion.value = bridgeConfig.signVersion || "v1";
-    status.textContent = bridgeConfig.enabled && bridgeConfig.endpoint
-        ? `当前模式：中转接口（${bridgeConfig.endpoint}）${bridgeConfig.apiKey ? "，含密钥" : ""}`
-      : "当前模式：规则文本兜底";
+    const mode = detectBridgeMode(bridgeConfig.endpoint);
+    if (!(bridgeConfig.enabled && bridgeConfig.endpoint)) {
+      status.textContent = "当前推理模式：规则文本兜底";
+      return;
+    }
+    const modeText = mode === "proxy" ? "中转接口" : "LLM 兼容接口直连";
+    const testedText = bridgeConnectivityState.tested
+      ? (bridgeConnectivityState.healthy ? "，已连通" : "，待重测")
+      : "，未测试";
+    status.textContent = `当前推理模式：${modeText}${bridgeConfig.apiKey ? "（含密钥）" : ""}${testedText}`;
   }
 
   function populateSelect(select, items, getLabel) {
@@ -309,14 +630,14 @@
     const pills = document.getElementById("status-pills");
     if (!pills) return;
     const entries = [
-      `阶段 ${snapshot.stage}`,
-      `资金 ${snapshot.money}`,
-      `微粒 ${snapshot.particle}`,
-      `源能 ${snapshot.energy}`,
-      `共富 ${snapshot.prosperity}`,
-      `公司 Lv${getCompanyLevel()}`
+      { key: "stage", text: `阶段 ${snapshot.stage}` },
+      { key: "money", text: `资金 ${snapshot.money}` },
+      { key: "particle", text: `微粒 ${snapshot.particle}` },
+      { key: "energy", text: `源能 ${snapshot.energy}` },
+      { key: "prosperity", text: `共富 ${snapshot.prosperity}` },
+      { key: "company", text: `公司 Lv${getCompanyLevel()}` }
     ];
-    pills.innerHTML = entries.map((item) => `<span>${item}</span>`).join("");
+    pills.innerHTML = entries.map((item) => `<span data-pill="${item.key}">${item.text}</span>`).join("");
   }
 
   function renderHome() {
@@ -769,42 +1090,19 @@
     if (!bridgeConfig.enabled || !bridgeConfig.endpoint) {
       throw new Error("bridge-not-enabled");
     }
-    const controller = new AbortController();
-    const securityMeta = buildSecurityMeta();
-    const timeoutId = window.setTimeout(() => controller.abort(), bridgeConfig.timeoutMs);
+    const scene = getSceneForTurn();
+    const resolvePayload = await postBridgePayload(buildOpenResolvePayload(scene, actionText));
+    const predictedNextScene = `刘家村，第 ${Number(engine.state.turn || 1) + 1} 天，清晨`;
+    const nextGoal = engine.state.open_mode.last_goal || DEFAULT_GOAL;
     try {
-      const headers = { "Content-Type": "application/json" };
-      applyBridgeAuthHeader(headers);
-      if (securityMeta) {
-        headers["X-TF-Timestamp"] = String(securityMeta.timestamp);
-        headers["X-TF-Nonce"] = securityMeta.nonce;
-        headers["X-TF-Signature"] = securityMeta.signature;
-        if (securityMeta.clientId) headers["X-TF-Client-Id"] = securityMeta.clientId;
-        if (securityMeta.signVersion) headers["X-TF-Sign-Version"] = securityMeta.signVersion;
-      }
-      const response = await fetch(bridgeConfig.endpoint, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          mode: "open_resolve",
-          scene: getSceneForTurn(),
-          selected_action: actionText,
-          model: bridgeConfig.model || undefined,
-          context: engine.statusSnapshot(),
-          security: securityMeta
-        }),
-        signal: controller.signal
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error((data && data.message) || `HTTP ${response.status}`);
-      }
-      const result = engine.applyRemoteOpenResolution(getSceneForTurn(), actionText, data || {});
-      engine.state.last_story_result = result;
-      return result;
-    } finally {
-      window.clearTimeout(timeoutId);
+      const nextOptions = await generateRemoteOpenOptions(predictedNextScene, nextGoal);
+      resolvePayload.next_options = nextOptions;
+    } catch (_) {
     }
+    const cleanedPayload = sanitizeRemoteResolvePayload(resolvePayload, scene, actionText);
+    const result = engine.applyRemoteOpenResolution(scene, actionText, cleanedPayload);
+    engine.state.last_story_result = result;
+    return result;
   }
 
   async function executeOpenAction(actionText) {
@@ -871,13 +1169,29 @@
     if (panel) panel.classList.add("active");
   }
 
-  function refreshOpenOptions() {
+  async function refreshOpenOptions() {
     if (!engine.state.open_mode.profile_saved) {
       openDialog(PROFILE_MODAL_ID);
       return;
     }
-    engine.openModeOptions(getSceneForTurn(), DEFAULT_GOAL);
-    persistState("已刷新行动建议。");
+    const scene = getSceneForTurn();
+    const goal = engine.state.open_mode.last_goal || DEFAULT_GOAL;
+    showLoading(true);
+    try {
+      if (bridgeConfig.enabled && bridgeConfig.endpoint) {
+        await generateRemoteOpenOptions(scene, goal);
+        persistState("已通过远程推理刷新行动建议。");
+      } else {
+        engine.openModeOptions(scene, goal);
+        persistState("已刷新行动建议。");
+      }
+    } catch (error) {
+      engine.openModeOptions(scene, goal);
+      persistState();
+      showFlash(`远程生成建议失败，已回退本地规则：${error && error.message ? error.message : "未知错误"}`);
+    } finally {
+      showLoading(false);
+    }
   }
 
   function bindEvents() {
@@ -994,14 +1308,24 @@
       executeOpenAction(value);
       input.value = "";
     });
-    document.getElementById("btn-refresh-open-options").addEventListener("click", refreshOpenOptions);
+    document.getElementById("btn-refresh-open-options").addEventListener("click", () => {
+      refreshOpenOptions();
+    });
 
-    document.getElementById("profile-form").addEventListener("submit", (event) => {
+    document.getElementById("profile-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       if (engine.state.open_mode.profile_saved) return;
       const form = event.currentTarget;
       const message = engine.updatePlayerProfile(form.playerName.value, form.playerIdentity.value, form.playerReturnReason.value);
-      engine.openModeOptions(getSceneForTurn(), DEFAULT_GOAL);
+      if (bridgeConfig.enabled && bridgeConfig.endpoint) {
+        try {
+          await generateRemoteOpenOptions(getSceneForTurn(), DEFAULT_GOAL);
+        } catch (_) {
+          engine.openModeOptions(getSceneForTurn(), DEFAULT_GOAL);
+        }
+      } else {
+        engine.openModeOptions(getSceneForTurn(), DEFAULT_GOAL);
+      }
       closeDialog(PROFILE_MODAL_ID);
       persistState(message);
     });
@@ -1018,6 +1342,11 @@
         clientId: document.getElementById("bridge-client-id").value,
         signVersion: document.getElementById("bridge-sign-version").value
       });
+      bridgeConnectivityState = {
+        tested: false,
+        healthy: false,
+        mode: detectBridgeMode(document.getElementById("bridge-endpoint").value)
+      };
       renderBridgeSettings();
       showFlash("中转配置已保存。");
     });
@@ -1029,29 +1358,66 @@
         showFlash("请先填写中转 Endpoint。");
         return;
       }
+      const mode = detectBridgeMode(endpoint);
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
       try {
         const securityMeta = buildSecurityMeta();
         const headers = { "Content-Type": "application/json" };
         applyBridgeAuthHeader(headers);
-        if (securityMeta) {
-          headers["X-TF-Timestamp"] = String(securityMeta.timestamp);
-          headers["X-TF-Nonce"] = securityMeta.nonce;
-          headers["X-TF-Signature"] = securityMeta.signature;
-          if (securityMeta.clientId) headers["X-TF-Client-Id"] = securityMeta.clientId;
-          if (securityMeta.signVersion) headers["X-TF-Sign-Version"] = securityMeta.signVersion;
+        let response;
+        if (mode === "proxy") {
+          if (securityMeta) {
+            headers["X-TF-Timestamp"] = String(securityMeta.timestamp);
+            headers["X-TF-Nonce"] = securityMeta.nonce;
+            headers["X-TF-Signature"] = securityMeta.signature;
+            if (securityMeta.clientId) headers["X-TF-Client-Id"] = securityMeta.clientId;
+            if (securityMeta.signVersion) headers["X-TF-Sign-Version"] = securityMeta.signVersion;
+          }
+          response = await fetch(endpoint, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ mode: "health", ping: "ok", security: securityMeta }),
+            signal: controller.signal
+          });
+        } else {
+          response = await fetch(normalizeOpenAiChatEndpoint(endpoint), {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              model: String(document.getElementById("bridge-model").value || "qwen3-max").trim() || "qwen3-max",
+              stream: false,
+              messages: [
+                { role: "system", content: "You are a health check assistant." },
+                { role: "user", content: "Reply with OK." }
+              ],
+              max_tokens: 8
+            }),
+            signal: controller.signal
+          });
         }
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ mode: "health", ping: "ok", security: securityMeta }),
-          signal: controller.signal
-        });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        showFlash("中转接口连通性测试成功。");
-      } catch (_) {
-        showFlash("中转接口测试失败，请检查地址、CORS 或网关配置。");
+        saveBridgeConfig({
+          enabled: document.getElementById("bridge-enabled").checked,
+          endpoint: endpoint,
+          apiKey: document.getElementById("bridge-api-key").value,
+          apiKeyHeader: document.getElementById("bridge-api-key-header").value,
+          model: document.getElementById("bridge-model").value,
+          timeoutMs,
+          signEnabled: document.getElementById("bridge-sign-enabled").checked,
+          clientId: document.getElementById("bridge-client-id").value,
+          signVersion: document.getElementById("bridge-sign-version").value
+        });
+        bridgeConnectivityState = { tested: true, healthy: true, mode };
+        renderBridgeSettings();
+        showFlash(mode === "proxy" ? "中转接口连通性测试成功，当前推理模式已切换。" : "LLM 兼容接口连通性测试成功，当前推理模式已切换。");
+      } catch (err) {
+        bridgeConnectivityState = { tested: true, healthy: false, mode };
+        renderBridgeSettings();
+        const reason = err && err.name === "AbortError"
+          ? "请求超时"
+          : (err && err.message) || "未知错误";
+        showFlash(`中转接口测试失败：${reason}。请检查地址、密钥、CORS 或网关配置。`);
       } finally {
         window.clearTimeout(timeoutId);
       }
@@ -1085,6 +1451,21 @@
       }
     });
   }
+
+  window.AllRichStaticApp = {
+    getEngine: () => engine,
+    getGameData: () => gameData,
+    subscribe: subscribeState,
+    commit: (flashMessage) => {
+      persistState(flashMessage);
+      return engine;
+    },
+    replaceEngine,
+    showPage,
+    showFlash,
+    openDialog,
+    closeDialog
+  };
 
   bindEvents();
   renderAll();

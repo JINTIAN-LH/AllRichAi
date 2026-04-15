@@ -38,6 +38,7 @@
     <nav class="bottom-nav">
       <a class="{% if page == 'home' %}active{% endif %}" href="{{ url_for('index') }}">主页</a>
       <a class="{% if page == 'story-panel' %}active{% endif %}" href="{{ url_for('story_panel') }}">剧情页</a>
+      <a class="{% if page == 'viz' %}active{% endif %}" href="{{ url_for('viz_index') }}">可视化</a>
       <a class="{% if page == 'balance' %}active{% endif %}" href="{{ url_for('balance_page') }}">个人中心</a>
     </nav>
   </body>

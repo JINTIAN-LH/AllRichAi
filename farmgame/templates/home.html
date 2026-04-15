@@ -138,7 +138,7 @@
   <h3>订单</h3>
   <button class="modal-close" type="button" onclick="document.getElementById('modal-order').close()">×</button>
   <ul class="status-list compact">{% for order in orders %}<li>{{ order }}</li>{% endfor %}</ul>
-  <form class="stack-form" method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="fulfill_order"><label>订单名称<input name="order_id" type="text" placeholder="例如：城郊生鲜店补货"></label><button type="submit">交付订单</button></form>
+  <form class="stack-form" method="post" action="{{ url_for('action') }}"><input type="hidden" name="next" value="home"><input type="hidden" name="action" value="fulfill_order"><label>订单编号或标题<input name="order_id" type="text" placeholder="例如：fresh_bundle 或 城郊生鲜店补货"></label><button type="submit">交付订单</button></form>
 </dialog>
 
 <dialog id="modal-company" class="story-modal">

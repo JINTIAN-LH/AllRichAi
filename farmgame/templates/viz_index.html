@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>躺平农场主 - 可视化版</title>
+  
+  <!-- 引入基础样式 -->
+  <link rel="stylesheet" href="/static/viz/css/base.css">
+  <link rel="stylesheet" href="/static/viz/css/panel.css">
+  <link rel="stylesheet" href="/static/viz/css/anim.css">
+  <link rel="stylesheet" href="/static/viz/css/story.css">
+  
+  <!-- 引入Chart.js用于数据可视化 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>.main-container { padding-bottom: 52px; }</style>
+</head>
+<body>
+  <!-- 主容器 -->
+  <div class="main-container">
+    <!-- 顶部状态栏 -->
+    <div class="status-bar">
+      <div class="status-item">
+        <span class="status-label">💰 金币:</span>
+        <span class="status-value" id="money-value">{{ money }}</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">🌱 微粒:</span>
+        <span class="status-value" id="particles-value">{{ particles }}</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">🌾 土地:</span>
+        <span class="status-value" id="land-value">{{ land }}亩</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">📅 天数:</span>
+        <span class="status-value" id="day-value">{{ turn }}</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">🗓️ 季节:</span>
+        <span class="status-value" id="season-value">{{ season }}</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">🌤️ 天气:</span>
+        <span class="status-value" id="weather-value">{{ weather }}</span>
+      </div>
+    </div>
+    
+    <!-- 主内容区域 -->
+    <div class="main-content">
+      <!-- 左侧农场可视化 -->
+      <div class="left-panel">
+        <!-- FarmDashboard.html 内容 -->
+        <div class="viz-panel farm-dashboard">
+  <h3 class="viz-panel-title">我的农场</h3>
+  
+  <div class="farm-grid">
+    <!-- 农田地块 -->
+    <div class="plot" data-plot-id="1" data-status="empty">
+      <div class="plot-content empty">
+        <div class="plot-icon">🌱</div>
+        <div class="plot-action">种植</div>
+      </div>
+    </div>
+    <div class="plot" data-plot-id="2" data-status="empty">
+      <div class="plot-content empty">
+        <div class="plot-icon">🌱</div>
+        <div class="plot-action">种植</div>
+      </div>
+    </div>
+    <div class="plot" data-plot-id="3" data-status="empty">
+      <div class="plot-content empty">
+        <div class="plot-icon">🌱</div>
+        <div class="plot-action">种植</div>
+      </div>
+    </div>
+    <div class="plot" data-plot-id="4" data-status="empty">
+      <div class="plot-content empty">
+        <div class="plot-icon">🌱</div>
+        <div class="plot-action">种植</div>
+      </div>
+    </div>
+    <div class="plot" data-plot-id="5" data-status="empty">
+      <div class="plot-content empty">
+        <div class="plot-icon">🌱</div>
+        <div class="plot-action">种植</div>
+      </div>
+    </div>
+    <div class="plot" data-plot-id="6" data-status="empty">
+      <div class="plot-content empty">
+        <div class="plot-icon">🌱</div>
+        <div class="plot-action">种植</div>
+      </div>
+    </div>
+    <div class="plot" data-plot-id="7" data-status="empty">
+      <div class="plot-content empty">
+        <div class="plot-icon">🌱</div>
+        <div class="plot-action">种植</div>
+      </div>
+    </div>
+    <div class="plot" data-plot-id="8" data-status="empty">
+      <div class="plot-content empty">
+        <div class="plot-icon">🌱</div>
+        <div class="plot-action">种植</div>
+      </div>
+    </div>
+    <div class="plot" data-plot-id="9" data-status="empty">
+      <div class="plot-content empty">
+        <div class="plot-icon">🌱</div>
+        <div class="plot-action">种植</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="farm-actions">
+    <button class="btn btn-primary" id="plant-btn">种植</button>
+    <button class="btn btn-success" id="harvest-btn">收获</button>
+    <button class="btn btn-warning" id="water-btn">浇水</button>
+    <button class="btn btn-info" id="fertilize-btn">施肥</button>
+  </div>
+</div>
+      </div>
+      
+      <!-- 右侧控制面板 -->
+      <div class="right-panel">
+        <!-- 仓库面板 -->
+        <!-- WarehousePanel.html 内容 -->
+        <div class="viz-panel warehouse-panel">
+  <h3 class="viz-panel-title">仓库</h3>
+  
+  <div class="warehouse-tabs">
+    <button class="tab-btn active" data-tab="seeds">种子</button>
+    <button class="tab-btn" data-tab="crops">作物</button>
+    <button class="tab-btn" data-tab="tools">工具</button>
+  </div>
+  
+  <div class="warehouse-content">
+    <div class="tab-pane active" id="seeds-pane">
+      <div class="item-grid">
+        <div class="item-card" data-item-type="seed" data-item-id="wheat_seed">
+          <div class="item-icon">🌾</div>
+          <div class="item-name">小麦种子</div>
+          <div class="item-count">数量: <span class="count">5</span></div>
+          <button class="btn btn-sm btn-primary use-item">使用</button>
+        </div>
+        <div class="item-card" data-item-type="seed" data-item-id="corn_seed">
+          <div class="item-icon">🌽</div>
+          <div class="item-name">玉米种子</div>
+          <div class="item-count">数量: <span class="count">3</span></div>
+          <button class="btn btn-sm btn-primary use-item">使用</button>
+        </div>
+        <div class="item-card" data-item-type="seed" data-item-id="rice_seed">
+          <div class="item-icon">🍚</div>
+          <div class="item-name">水稻种子</div>
+          <div class="item-count">数量: <span class="count">7</span></div>
+          <button class="btn btn-sm btn-primary use-item">使用</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="tab-pane" id="crops-pane">
+      <div class="item-grid">
+        <div class="item-card" data-item-type="crop" data-item-id="wheat">
+          <div class="item-icon">🌾</div>
+          <div class="item-name">小麦</div>
+          <div class="item-count">数量: <span class="count">12</span></div>
+          <button class="btn btn-sm btn-success sell-item">出售</button>
+        </div>
+        <div class="item-card" data-item-type="crop" data-item-id="corn">
+          <div class="item-icon">🌽</div>
+          <div class="item-name">玉米</div>
+          <div class="item-count">数量: <span class="count">8</span></div>
+          <button class="btn btn-sm btn-success sell-item">出售</button>
+        </div>
+        <div class="item-card" data-item-type="crop" data-item-id="rice">
+          <div class="item-icon">🍚</div>
+          <div class="item-name">大米</div>
+          <div class="item-count">数量: <span class="count">15</span></div>
+          <button class="btn btn-sm btn-success sell-item">出售</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="tab-pane" id="tools-pane">
+      <div class="item-grid">
+        <div class="item-card" data-item-type="tool" data-item-id="watering_can">
+          <div class="item-icon">🪣</div>
+          <div class="item-name">水桶</div>
+          <div class="item-count">数量: <span class="count">1</span></div>
+          <button class="btn btn-sm btn-primary use-item">使用</button>
+        </div>
+        <div class="item-card" data-item-type="tool" data-item-id="fertilizer">
+          <div class="item-icon">🧪</div>
+          <div class="item-name">化肥</div>
+          <div class="item-count">数量: <span class="count">5</span></div>
+          <button class="btn btn-sm btn-primary use-item">使用</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+        <!-- 剧情时间线 -->
+        <!-- StoryTimeline.html 内容 -->
+        <div class="viz-panel story-timeline-panel">
+  <h3 class="viz-panel-title">剧情时间线</h3>
+  
+  <div class="timeline-container">
+    <div class="timeline-header">
+      <div class="volume-selector">
+        <button class="volume-btn active" data-volume="1">第一卷：返乡启程</button>
+        <button class="volume-btn" data-volume="2">第二卷：创业维艰</button>
+        <button class="volume-btn" data-volume="3">第三卷：共富之路</button>
+      </div>
+    </div>
+    
+    <div class="timeline-body">
+      <div class="timeline-track">
+        <!-- 第一卷：返乡启程 -->
+        <div class="volume-section" data-volume="1">
+          <div class="chapter-node" data-chapter="v1c1" data-status="locked">
+            <div class="chapter-icon">🏠</div>
+            <div class="chapter-title">第一章：归乡</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+          
+          <div class="chapter-node" data-chapter="v1c2" data-status="locked">
+            <div class="chapter-icon">🌾</div>
+            <div class="chapter-title">第二章：初耕</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+          
+          <div class="chapter-node" data-chapter="v1c3" data-status="locked">
+            <div class="chapter-icon">👨‍👩‍👧‍👦</div>
+            <div class="chapter-title">第三章：家人</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+          
+          <div class="chapter-node" data-chapter="v1c4" data-status="locked">
+            <div class="chapter-icon">🎯</div>
+            <div class="chapter-title">第四章：立业</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 第二卷：创业维艰 -->
+        <div class="volume-section" data-volume="2" style="display: none;">
+          <div class="chapter-node" data-chapter="v2c1" data-status="locked">
+            <div class="chapter-icon">🏭</div>
+            <div class="chapter-title">第五章：加工</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+          
+          <div class="chapter-node" data-chapter="v2c2" data-status="locked">
+            <div class="chapter-icon">畜</div>
+            <div class="chapter-title">第六章：养殖</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+          
+          <div class="chapter-node" data-chapter="v2c3" data-status="locked">
+            <div class="chapter-icon">🏢</div>
+            <div class="chapter-title">第七章：公司</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+          
+          <div class="chapter-node" data-chapter="v2c4" data-status="locked">
+            <div class="chapter-icon">🛒</div>
+            <div class="chapter-title">第八章：订单</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 第三卷：共富之路 -->
+        <div class="volume-section" data-volume="3" style="display: none;">
+          <div class="chapter-node" data-chapter="v3c1" data-status="locked">
+            <div class="chapter-icon">📊</div>
+            <div class="chapter-title">第九章：运营</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+          
+          <div class="chapter-node" data-chapter="v3c2" data-status="locked">
+            <div class="chapter-icon">🤝</div>
+            <div class="chapter-title">第十章：合作</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+          
+          <div class="chapter-node" data-chapter="v3c3" data-status="locked">
+            <div class="chapter-icon">🏆</div>
+            <div class="chapter-title">第十一章：成就</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+          
+          <div class="chapter-node" data-chapter="v3c4" data-status="locked">
+            <div class="chapter-icon">🌟</div>
+            <div class="chapter-title">第十二章：典范</div>
+            <div class="chapter-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+              </div>
+              <div class="progress-text">0%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+      </div>
+    </div>
+    
+    <!-- 剧情对话面板 -->
+    <!-- StoryDialog.html 内容 -->
+    <div class="story-dialog-panel" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; align-items: center; justify-content: center;">
+  <div class="dialog-container" style="background: white; width: 90%; max-width: 600px; border-radius: 12px; overflow: hidden; max-height: 80vh; display: flex; flex-direction: column;">
+    <div class="dialog-header" style="padding: 16px; background: #4CAF50; color: white; display: flex; justify-content: space-between; align-items: center;">
+      <h3 class="dialog-title">剧情对话</h3>
+      <button class="close-dialog" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
+    </div>
+    
+    <div class="dialog-content" style="padding: 20px; overflow-y: auto; flex: 1;">
+      <div class="character-section" style="display: flex; align-items: center; margin-bottom: 20px;">
+        <div class="character-avatar" style="width: 60px; height: 60px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 24px; margin-right: 16px;">👨</div>
+        <div class="character-info">
+          <div class="character-name" style="font-weight: bold; font-size: 18px; margin-bottom: 4px;">角色名称</div>
+          <div class="character-status" style="color: #666;">状态信息</div>
+        </div>
+      </div>
+      
+      <div class="dialog-text" style="margin-bottom: 20px; padding: 12px; background: #f5f5f5; border-radius: 8px; line-height: 1.6;">
+        这里是剧情对话内容，将根据当前章节和玩家选择动态显示。
+      </div>
+      
+      <div class="dialog-options" style="margin-top: 16px;">
+        <div class="option-item" style="padding: 12px; margin-bottom: 8px; background: #e3f2fd; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+          <div class="option-text">选项1：这是第一个对话选项</div>
+        </div>
+        <div class="option-item" style="padding: 12px; margin-bottom: 8px; background: #e3f2fd; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+          <div class="option-text">选项2：这是第二个对话选项</div>
+        </div>
+        <div class="option-item" style="padding: 12px; background: #e3f2fd; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+          <div class="option-text">选项3：这是第三个对话选项</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="dialog-footer" style="padding: 16px; background: #f5f5f5; display: flex; justify-content: flex-end;">
+      <button class="btn btn-secondary close-dialog">关闭</button>
+    </div>
+  </div>
+</div>
+
+    <!-- 剧情结果面板 -->
+    <!-- StoryResult.html 内容 -->
+    <div class="story-result-panel" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2001; align-items: center; justify-content: center;">
+  <div class="result-container" style="background: white; width: 90%; max-width: 600px; border-radius: 12px; overflow: hidden; max-height: 80vh; display: flex; flex-direction: column;">
+    <div class="result-header" style="padding: 16px; background: #2196F3; color: white; display: flex; justify-content: space-between; align-items: center;">
+      <h3 class="result-title">剧情结果</h3>
+      <button class="close-result" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
+    </div>
+    
+    <div class="result-content" style="padding: 20px; overflow-y: auto; flex: 1;">
+      <div class="result-text" style="margin-bottom: 20px; line-height: 1.6;">
+        这里显示剧情选择的结果文本，包括故事发展和对农场状态的影响。
+      </div>
+      
+      <div class="result-effects">
+        <h4 style="margin-bottom: 12px; color: #333;">选择影响:</h4>
+        <div class="effects-list">
+          <div class="effect-item" style="padding: 8px; margin-bottom: 8px; background: #f0f8ff; border-radius: 4px; display: flex; justify-content: space-between;">
+            <span>💰 金币: +100</span>
+            <span class="effect-change positive">+100</span>
+          </div>
+          <div class="effect-item" style="padding: 8px; margin-bottom: 8px; background: #f0f8ff; border-radius: 4px; display: flex; justify-content: space-between;">
+            <span>🌱 繁荣度: +5</span>
+            <span class="effect-change positive">+5</span>
+          </div>
+          <div class="effect-item" style="padding: 8px; margin-bottom: 8px; background: #f0f8ff; border-radius: 4px; display: flex; justify-content: space-between;">
+            <span>❤️ 村民支持: -2</span>
+            <span class="effect-change negative">-2</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="result-feedback" style="margin-top: 20px; padding: 12px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px;">
+        <div style="font-weight: bold; color: #856404; margin-bottom: 4px;">剧情提示:</div>
+        <div style="color: #856404;">你的选择会影响后续剧情发展和农场状态。</div>
+      </div>
+    </div>
+    
+    <div class="result-footer" style="padding: 16px; background: #f5f5f5; display: flex; justify-content: space-between;">
+      <button class="btn btn-primary" id="accept-result">确认</button>
+      <button class="btn btn-secondary close-result">关闭</button>
+    </div>
+  </div>
+</div>
+  </div>
+  
+  <!-- 粒子效果容器 -->
+  <div id="particle-container"></div>
+  
+  <!-- 引入引擎桥接和状态同步 -->
+  <script src="/static/viz/js/engineBridge.js"></script>
+  <script src="/static/viz/js/stateMapper.js"></script>
+  <script src="/static/viz/js/stateSync.js"></script>
+  
+  <!-- 引入动画引擎和粒子效果 -->
+  <script src="/static/viz/js/animEngine.js"></script>
+  <script src="/static/viz/js/particleEffect.js"></script>
+  
+  <!-- 引入交互逻辑 -->
+  <script src="/static/viz/js/farmInteract.js"></script>
+  <script src="/static/viz/js/warehouseInteract.js"></script>
+  <script src="/static/viz/js/statusBind.js"></script>
+  
+  <!-- 引入剧情可视化 -->
+  <script src="/static/viz/js/storyViz.js"></script>
+  
+
+  
+  <script>
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      // 初始化所有可视化组件
+      if (typeof StateSync !== 'undefined') {
+        StateSync.init();
+      }
+      
+      if (typeof FarmInteract !== 'undefined') {
+        FarmInteract.init();
+      }
+      
+      if (typeof WarehouseInteract !== 'undefined') {
+        WarehouseInteract.init();
+      }
+      
+      if (typeof StatusBind !== 'undefined') {
+        StatusBind.init();
+      }
+      
+      if (typeof StoryViz !== 'undefined') {
+        StoryViz.init();
+      }
+      
+      // 初始化动画引擎
+      if (typeof AnimEngine !== 'undefined') {
+        AnimEngine.init();
+      }
+      
+      // 初始化粒子效果
+      if (typeof ParticleEffect !== 'undefined') {
+        ParticleEffect.init();
+      }
+    });
+  </script>
+
+  <nav class="bottom-nav" style="position:fixed;bottom:0;left:0;right:0;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-top:1px solid #e0e0e0;z-index:1000;">
+    <a href="{{ url_for('index') }}" style="padding:10px 0;text-align:center;text-decoration:none;color:#555;font-size:13px;">主页</a>
+    <a href="{{ url_for('story_panel') }}" style="padding:10px 0;text-align:center;text-decoration:none;color:#555;font-size:13px;">剧情页</a>
+    <a href="{{ url_for('viz_index') }}" style="padding:10px 0;text-align:center;text-decoration:none;color:#4caf50;font-weight:bold;font-size:13px;">可视化</a>
+    <a href="{{ url_for('balance_page') }}" style="padding:10px 0;text-align:center;text-decoration:none;color:#555;font-size:13px;">个人中心</a>
+  </nav>
+</body>
+</html>

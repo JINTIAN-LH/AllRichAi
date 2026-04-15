@@ -1,17 +1,17 @@
 {
-  "turn": 14,
-  "time": "上午",
+  "turn": 6,
+  "time": "夜晚",
   "season": "初夏",
-  "weather": "微风",
+  "weather": "大雨",
   "stage": "startup",
   "resources": {
-    "money": 4950,
-    "particles": 180,
-    "source_energy": 7,
-    "prosperity": 23,
-    "laziness": 35,
+    "money": 4620,
+    "particles": 130,
+    "source_energy": 2,
+    "prosperity": 5,
+    "laziness": 47,
     "villager_support": 10,
-    "family_harmony": 87,
+    "family_harmony": 83,
     "land": 0.5
   },
   "system": {
@@ -22,41 +22,44 @@
   "plots": [
     {
       "plot_id": 1,
-      "crop_id": "watermelon",
+      "crop_id": null,
       "days_remaining": 0,
-      "ready_to_harvest": true
+      "ready_to_harvest": false
     },
     {
       "plot_id": 2,
-      "crop_id": "watermelon",
+      "crop_id": null,
       "days_remaining": 0,
-      "ready_to_harvest": true
+      "ready_to_harvest": false
     }
   ],
   "pens": [
     {
       "pen_id": 1,
-      "livestock_id": "hens",
+      "livestock_id": null,
       "days_remaining": 0,
-      "ready_to_collect": true
+      "ready_to_collect": false
     }
   ],
-  "inventory": {},
+  "inventory": {
+    "vegetable": 6,
+    "egg": 8
+  },
   "characters": {
     "liu_huaizhi": {
-      "favor": 4,
+      "favor": 0,
       "unlocked": true
     },
     "liu_xiaoxue": {
-      "favor": 5,
+      "favor": 0,
       "unlocked": true
     },
     "yang_dazhen": {
-      "favor": 4,
+      "favor": 0,
       "unlocked": true
     },
     "wang_nan": {
-      "favor": 4,
+      "favor": 0,
       "unlocked": true
     },
     "zhao_jiangxin": {
@@ -66,9 +69,9 @@
   },
   "tasks": {
     "main_first_harvest": {
-      "completed": true,
-      "claimed": true,
-      "progress": 2
+      "completed": false,
+      "claimed": false,
+      "progress": 0
     },
     "main_first_stream": {
       "completed": false,
@@ -78,17 +81,17 @@
     "main_meet_mentor": {
       "completed": false,
       "claimed": false,
-      "progress": 1
+      "progress": 0
     },
     "side_support_sister": {
       "completed": false,
       "claimed": false,
-      "progress": 5
+      "progress": 0
     },
     "side_partner_father": {
       "completed": false,
       "claimed": false,
-      "progress": 4
+      "progress": 0
     },
     "daily_plant": {
       "completed": false,
@@ -108,7 +111,7 @@
     "achievement_harvest_master": {
       "completed": false,
       "claimed": false,
-      "progress": 2
+      "progress": 0
     },
     "main_processing": {
       "completed": false,
@@ -127,44 +130,39 @@
     }
   },
   "stats": {
-    "planted_count": 4,
-    "harvest_count": 2,
-    "interaction_count": 4,
+    "planted_count": 0,
+    "harvest_count": 0,
+    "interaction_count": 0,
     "stream_count": 0,
-    "sales_revenue": 660,
+    "sales_revenue": 0,
     "processed_batches": 0,
     "villagers_hired": 0,
     "dividend_rounds": 0,
     "livestock_collections": 0,
-    "orders_completed": 0,
+    "orders_completed": 1,
     "ranch_expansions": 0,
     "workshop_upgrades": 0,
-    "days_played": 14,
+    "days_played": 6,
     "current_turn_planted": 0,
     "current_turn_interactions": 0,
     "current_turn_streamed": 0,
     "current_turn_processed": 0,
-    "interactions_by_character": {
-      "liu_huaizhi": 1,
-      "liu_xiaoxue": 1,
-      "yang_dazhen": 1,
-      "wang_nan": 1
-    }
+    "interactions_by_character": {}
   },
   "company": {
     "unlocked": false,
     "employees": 0,
-    "dividend_rate": 0.0,
+    "dividend_rate": 0.12,
     "brand_level": 0,
     "cash_reserve": 0,
-    "wage_per_employee": 80,
+    "wage_per_employee": 90,
     "workshop_level": 1,
     "ranch_capacity": 1,
-    "employee_morale": 60,
-    "profit_pool": 198,
+    "employee_morale": 62,
+    "profit_pool": 770,
     "processing_fee_multiplier": 1.0,
-    "processing_output_multiplier": 1.0,
-    "order_reward_multiplier": 1.0,
+    "processing_output_multiplier": 1.2,
+    "order_reward_multiplier": 1.1,
     "support_score": 10,
     "brand_score": 1
   },
@@ -174,17 +172,13 @@
     "return_reason": "考研失利后希望以低压力方式重建生活"
   },
   "open_mode": {
-    "profile_saved": true,
-    "options_ready": true,
-    "last_scene": "刘家村，第 14 天，清晨",
-    "last_goal": "低压力推进经营并保持家庭关系稳定",
-    "last_options": [
-      "把今天重点放在加工链路，尝试提升单位产出",
-      "把今天重点放在订单履约，稳住信誉并积累品牌",
-      "把今天重点放在人力协作，优化分工与执行节奏"
-    ],
-    "last_play_result": "刘洋在“刘家村，第 12 天，清晨”执行了“优先处理生产：收获与播种衔接，保证现金流不断档”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村里对你的信任明显提高，后续合作也更顺畅。本次行动即时结算：资金 +150，微粒 +160，共富 +1，躺平值 -2。\n【日结】第 14 天开始。今日自动获得 300 微粒。",
-    "last_stat_delta": "资金 +150  |  共富 +1  |  微粒 -540  |  源能 +1"
+    "profile_saved": false,
+    "options_ready": false,
+    "last_scene": "",
+    "last_goal": "",
+    "last_options": [],
+    "last_play_result": "请先完成主角设定。",
+    "last_stat_delta": "数值无变化"
   },
   "partnerships": {
     "science_progress": 0,
@@ -207,21 +201,33 @@
       "reward_money": 2200,
       "reward_prosperity": 2,
       "reward_particles": 300,
+      "completed": true
+    },
+    {
+      "order_id": "fresh_bundle",
+      "title": "城郊生鲜店补货",
+      "required_items": {
+        "vegetable": 4,
+        "egg": 2
+      },
+      "reward_money": 2200,
+      "reward_prosperity": 2,
+      "reward_particles": 300,
       "completed": false
     }
   ],
-  "event_text": "微风的上午，王楠发来语音，说短视频素材已经剪好。",
+  "event_text": "大雨的夜晚，王楠发来语音，说短视频素材已经剪好。",
   "flags": [],
   "log": [
-    "✓ 刘洋在“刘家村，第 10 天，清晨”执行了“农业行动：查看自家田地”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村...",
-    "开放玩法：把今天重点放在人力协作，优化分工与执行节奏",
-    "雨声敲瓦，灶间飘出姜汤的辛香。你裹着旧毛毯坐在堂屋，手里攥着今日分工草图。【叮！】系统提示：能量5，村民支持10，西甜瓜待收。你把父亲叫来，指着图纸说清采摘、装箱、晾棚三步轮换。他眯眼看了半晌，嘟囔“比单干省力”，转身喊上刘怀均帮忙。傍晚收工时，瓜堆整齐码在棚下，母亲端来热汤：“别熬太晚。”明日可选：1. 农业行动：采收西甜瓜 2. 人物互动：和刘怀均谈长期帮工 3. 电商行动：联系王楠定包装 4. 探索行动：雨停后巡田 5. 躺平休息：回房补觉 6. 系统操作：查看人力效率报告",
+    "模拟器行动：农业行动：查看自家田地",
+    "刘洋在“刘家村，第 3 天，清晨”执行了“农业行动：查看自家田地”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村里对你的信任明显提高，后续合作也更顺畅。本次行动即时结算：资金 +140，微粒 +100，共富 +1，躺平值 -1。",
     "新的一天开始了，系统完成日常结算。",
-    "开放玩法：安排一次低风险公共投入，提升村民认可度和共富指数",
-    "雨丝沾衣的清晨，灶台飘出红薯粥的甜香。母亲瞥见你眼下的青黑，轻叹：‘别光顾着忙，身子骨才是本钱。’\n【叮！】共富指数+2，村民认可度+5，当前支持度15\n你用积蓄买了十把新秧苗分给缺种的农户，刘怀均蹲在田埂上咧嘴笑：‘大学生还惦记咱这老把式？’",
+    "→ 农业行动：查看自家田地",
+    "✓ 刘洋在“刘家村，第 3 天，清晨”执行了“农业行动：查看自家田地”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村里...",
     "新的一天开始了，系统完成日常结算。",
-    "开放玩法：优先处理生产：收获与播种衔接，保证现金流不断档",
-    "刘洋在“刘家村，第 12 天，清晨”执行了“优先处理生产：收获与播种衔接，保证现金流不断档”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村里对你的信任明显提高，后续合作也更顺畅。本次行动即时结算：资金 +150，微粒 +160，共富 +1，躺平值 -2。",
-    "新的一天开始了，系统完成日常结算。"
+    "模拟器行动：剧情推进：先查看农场当前状况，再决定今天行动",
+    "刘洋在“刘家村，第 5 天，剧情节点 v1c1”执行了“剧情推进：先查看农场当前状况，再决定今天行动”。白天你先和关键人物对齐了行动节奏，再把执行拆成可落地的两步，避免了无效忙碌。傍晚复盘时，村里对你的信任明显提高，后续合作也更顺畅。本次行动即时结算：资金 +140，微粒 +100，共富 +1，躺平值 -1。",
+    "新的一天开始了，系统完成日常结算。",
+    "[剧情] v1c1 -> 先查看农场当前状况，再决定今天行动"
   ]
 }

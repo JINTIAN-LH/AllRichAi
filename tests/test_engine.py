@@ -1,4 +1,5 @@
 import unittest
+from urllib.parse import unquote
 
 from farmgame.engine import GameEngine
 from farmgame.validators import run_design_audit
@@ -188,6 +189,145 @@ class WebAppTests(unittest.TestCase):
             },
         )
         self.assertEqual(apply_resp.status_code, 302)
+
+    def test_fulfill_order_accepts_pasted_order_line(self) -> None:
+        from farmgame.engine import GameEngine
+        from farmgame.storage import save_game
+        from farmgame.webapp import WEB_SAVE_PATH, create_app
+
+        engine = GameEngine()
+        engine.state.inventory["vegetable"] = 10
+        engine.state.inventory["egg"] = 10
+        order_line = engine.order_report()[0]
+        save_game(engine.state, WEB_SAVE_PATH)
+
+        app = create_app()
+        app.testing = True
+        client = app.test_client()
+
+        resp = client.post(
+            "/action",
+            data={"action": "fulfill_order", "order_id": order_line, "next": "home"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        location = unquote(resp.headers.get("Location", ""))
+        self.assertIn("订单交付成功", location)
+
+    def test_action_route_respects_next_page_redirect(self) -> None:
+        from farmgame.webapp import create_app
+
+        app = create_app()
+        app.testing = True
+        client = app.test_client()
+
+        to_story = client.post("/action", data={"action": "advance_day", "next": "story"})
+        self.assertEqual(to_story.status_code, 302)
+        self.assertIn("/story-panel", to_story.headers.get("Location", ""))
+
+        to_balance = client.post("/action", data={"action": "advance_day", "next": "balance"})
+        self.assertEqual(to_balance.status_code, 302)
+        self.assertIn("/balance", to_balance.headers.get("Location", ""))
+
+    def test_story_panel_execute_command_validation_and_mapping(self) -> None:
+        from farmgame.webapp import create_app
+
+        app = create_app()
+        app.testing = True
+        client = app.test_client()
+
+        bad_resp = client.post("/api/story/execute-command", json={})
+        self.assertEqual(bad_resp.status_code, 400)
+        bad_payload = bad_resp.get_json() or {}
+        self.assertFalse(bad_payload.get("success", True))
+        self.assertIn("指令不能为空", str(bad_payload.get("error", "")))
+
+        ok_resp = client.post("/api/story/execute-command", json={"command": "1", "goal": "低压力推进经营"})
+        self.assertEqual(ok_resp.status_code, 200)
+        ok_payload = ok_resp.get_json() or {}
+        self.assertTrue(ok_payload.get("success", False))
+        self.assertIn("updated_state", ok_payload)
+        self.assertIn("turn", ok_payload.get("updated_state", {}))
+
+    def test_viz_endpoints_and_action_bridge(self) -> None:
+        from farmgame.webapp import create_app
+
+        app = create_app()
+        app.testing = True
+        client = app.test_client()
+
+        viz_page = client.get("/viz")
+        self.assertEqual(viz_page.status_code, 200)
+
+        state_resp = client.get("/api/viz/state")
+        self.assertEqual(state_resp.status_code, 200)
+        state_payload = state_resp.get_json() or {}
+        self.assertTrue(state_payload.get("ok", False))
+        self.assertIn("state", state_payload)
+        self.assertIn("snapshot", state_payload.get("state", {}))
+
+        bad_action = client.post("/api/viz/action", json={"action": "unsupported_action", "params": {}})
+        self.assertEqual(bad_action.status_code, 200)
+        bad_payload = bad_action.get_json() or {}
+        self.assertFalse(bad_payload.get("ok", True))
+        self.assertIn("暂不支持", str(bad_payload.get("message", "")))
+
+        ok_action = client.post("/api/viz/action", json={"action": "advance_day", "params": {}})
+        self.assertEqual(ok_action.status_code, 200)
+        ok_payload = ok_action.get_json() or {}
+        self.assertTrue(ok_payload.get("ok", False))
+        self.assertIn("state", ok_payload)
+
+    def test_viz_story_open_and_slot_interactions(self) -> None:
+        from farmgame.webapp import create_app
+
+        app = create_app()
+        app.testing = True
+        client = app.test_client()
+
+        suggest_resp = client.post(
+            "/api/viz/open/suggest",
+            json={"scene": "刘家村村口", "goal": "低压力推进经营并保持家庭关系稳定"},
+        )
+        self.assertEqual(suggest_resp.status_code, 200)
+        suggest_payload = suggest_resp.get_json() or {}
+        self.assertTrue(suggest_payload.get("ok", False))
+        self.assertIn("options", suggest_payload)
+
+        play_resp = client.post(
+            "/api/viz/open/play",
+            json={"scene": "刘家村村口", "open_action": "先在村里散步并观察行情"},
+        )
+        self.assertEqual(play_resp.status_code, 200)
+        play_payload = play_resp.get_json() or {}
+        self.assertTrue(play_payload.get("ok", False))
+        self.assertIn("next_options", play_payload)
+
+        dialog_resp = client.post("/api/viz/story/dialog", json={"chapter_id": "v1c1"})
+        self.assertEqual(dialog_resp.status_code, 200)
+        dialog_payload = dialog_resp.get_json() or {}
+        self.assertTrue(dialog_payload.get("ok", False))
+        self.assertIn("dialog", dialog_payload)
+
+        choice_resp = client.post(
+            "/api/viz/story/choice",
+            json={"chapter_id": "v1c1", "choice_text": "先查看农场当前状况，再决定今天行动"},
+        )
+        self.assertEqual(choice_resp.status_code, 200)
+        choice_payload = choice_resp.get_json() or {}
+        self.assertTrue(choice_payload.get("ok", False))
+        self.assertIn("result_text", choice_payload)
+
+        save_slot_resp = client.post("/api/viz/slot/save", json={"slot": 1})
+        self.assertEqual(save_slot_resp.status_code, 200)
+        self.assertTrue((save_slot_resp.get_json() or {}).get("ok", False))
+
+        load_slot_resp = client.post("/api/viz/slot/load", json={"slot": 1})
+        self.assertEqual(load_slot_resp.status_code, 200)
+        self.assertTrue((load_slot_resp.get_json() or {}).get("ok", False))
+
+        delete_slot_resp = client.post("/api/viz/slot/delete", json={"slot": 1})
+        self.assertEqual(delete_slot_resp.status_code, 200)
+        self.assertTrue((delete_slot_resp.get_json() or {}).get("ok", False))
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from typing import Any, Callable
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
 from farmgame.balance import CROPS, ITEMS, LIVESTOCKS, RECIPES, SKILLS
-from farmgame.content import CHARACTERS
+from farmgame.content import CHARACTERS, TASKS
 from farmgame.engine import GameEngine
 from farmgame.narrative import test_llm_configuration
 from farmgame.storage import load_game, save_game
@@ -83,6 +83,185 @@ def create_app() -> Flask:
     @app.get("/story")
     def story_board():
         return redirect(url_for("story_panel"))
+
+    @app.get("/viz")
+    def viz_index():
+        """可视化版本主页"""
+        engine = _load_engine()
+        company_design = _build_company_design(engine)
+        return render_template(
+            "viz_index.html",
+            page="viz",
+            snapshot=engine.status_snapshot(),
+            company_design=company_design,
+            player_profile=engine.state.player_profile,
+            open_mode=engine.open_mode_status(),
+            plots=engine.plot_report(),
+            pens=engine.pen_report(),
+            inventory=engine.inventory_report(),
+            sellable_items=_build_sellable_items(engine),
+            characters=engine.character_report(),
+            tasks=engine.task_report(),
+            company=engine.company_report(),
+            orders=engine.order_report(),
+            logs=engine.state.log[-8:],
+            save_slots=_list_slots(),
+            crops=engine.available_crops(),
+            livestocks=engine.available_livestock(),
+            recipes=engine.available_recipes(),
+            crop_defs=CROPS,
+            livestock_defs=LIVESTOCKS,
+            recipe_defs=RECIPES,
+            character_defs=CHARACTERS,
+            skills=SKILLS,
+            unlocked_skills=set(engine.state.system.unlocked_skills),
+        )
+
+    # ========== 可视化融合专用 JSON API Start ==========
+    @app.get("/api/viz/state")
+    def api_viz_state():
+        engine = _load_engine()
+        return jsonify(
+            {
+                "ok": True,
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/action")
+    def api_viz_action():
+        data = request.get_json(silent=True) or {}
+        action_name = str(data.get("action", "")).strip()
+        params = data.get("params") or {}
+        if not isinstance(params, dict):
+            params = {}
+
+        engine = _load_engine()
+        ok, message = _execute_viz_action(engine, action_name, params)
+        save_game(engine.state, WEB_SAVE_PATH)
+        return jsonify(
+            {
+                "ok": ok,
+                "success": ok,
+                "message": message,
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/slot/save")
+    def api_viz_slot_save():
+        data = request.get_json(silent=True) or {}
+        slot = _to_int(data.get("slot", 1), 1)
+        engine = _load_engine()
+        message = _save_slot(engine, slot)
+        return jsonify(
+            {
+                "ok": True,
+                "success": True,
+                "message": message,
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/slot/load")
+    def api_viz_slot_load():
+        data = request.get_json(silent=True) or {}
+        slot = _to_int(data.get("slot", 1), 1)
+        message = _load_slot_to_active(slot)
+        engine = _load_engine()
+        ok = "为空" not in message
+        return jsonify(
+            {
+                "ok": ok,
+                "success": ok,
+                "message": message,
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/slot/delete")
+    def api_viz_slot_delete():
+        data = request.get_json(silent=True) or {}
+        slot = _to_int(data.get("slot", 1), 1)
+        path = _slot_path(slot)
+        if path.exists():
+            path.unlink()
+            message = f"已删除槽位 {slot}。"
+            ok = True
+        else:
+            message = f"槽位 {slot} 为空。"
+            ok = False
+        engine = _load_engine()
+        return jsonify(
+            {
+                "ok": ok,
+                "success": ok,
+                "message": message,
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/open/suggest")
+    def api_viz_open_suggest():
+        data = request.get_json(silent=True) or {}
+        scene = str(data.get("scene", "刘家村村口"))
+        goal = str(data.get("goal", "低压力推进经营并保持家庭关系稳定"))
+        engine = _load_engine()
+        options = engine.open_mode_options(scene, goal)
+        save_game(engine.state, WEB_SAVE_PATH)
+        return jsonify(
+            {
+                "ok": True,
+                "success": True,
+                "message": "已生成行动建议。",
+                "options": options[:3],
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/open/play")
+    def api_viz_open_play():
+        data = request.get_json(silent=True) or {}
+        scene = str(data.get("scene", "刘家村村口"))
+        selected_action = str(data.get("open_action", "先在村里散步并观察行情"))
+        engine = _load_engine()
+        result = _run_open_mode_play(engine, scene, selected_action)
+        return jsonify(
+            {
+                "ok": True,
+                "success": True,
+                "message": str(result.get("message", "")),
+                "stat_delta": str(result.get("stat_delta", "")),
+                "next_options": list(result.get("next_options", []))[:3],
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/story/dialog")
+    def api_viz_story_dialog():
+        data = request.get_json(silent=True) or {}
+        chapter_id = str(data.get("chapter_id", "v1c1")).strip() or "v1c1"
+        engine = _load_engine()
+        return jsonify(
+            {
+                "ok": True,
+                "success": True,
+                "chapter_id": chapter_id,
+                "dialog": _build_story_dialog_payload(chapter_id),
+                "state": _build_viz_state_payload(engine),
+            }
+        )
+
+    @app.post("/api/viz/story/choice")
+    def api_viz_story_choice():
+        data = request.get_json(silent=True) or {}
+        chapter_id = str(data.get("chapter_id", "v1c1")).strip() or "v1c1"
+        choice_text = str(data.get("choice_text", "继续推进剧情")).strip() or "继续推进剧情"
+        engine = _load_engine()
+        result = _run_story_choice(engine, chapter_id, choice_text)
+        return jsonify({"ok": True, "success": True, **result, "state": _build_viz_state_payload(engine)})
+
+    # ========== 可视化融合专用 JSON API End ==========
 
     # ========== 全局面板推进模式 Start ==========
     @app.get("/story-panel")
@@ -271,11 +450,7 @@ def create_app() -> Flask:
             message = engine.hire_villagers(int(request.form.get("count", "1")))
         elif action_name == "fulfill_order":
             order_input = request.form["order_id"].strip()
-            matched_order_id = order_input
-            for active_order in engine.state.active_orders:
-                if not active_order.completed and active_order.title == order_input:
-                    matched_order_id = active_order.order_id
-                    break
+            matched_order_id = _resolve_order_input(engine, order_input)
             message = engine.fulfill_order(matched_order_id)
         elif action_name == "advance_partnership":
             partner_type = request.form.get("partner_type", "")
@@ -373,6 +548,65 @@ def _run_open_mode_play(engine: GameEngine, scene: str, selected_action: str) ->
     }
 
 
+def _build_story_dialog_payload(chapter_id: str) -> dict[str, Any]:
+    dialog_map: dict[str, dict[str, Any]] = {
+        "v1c1": {
+            "character": {"name": "系统提示", "status": "引导", "avatar": "🤖"},
+            "text": "欢迎来到刘家村。你将从返乡青年起步，逐步推进农场经营与村庄共富。",
+            "options": [
+                {"text": "先查看农场当前状况，再决定今天行动"},
+                {"text": "先和家人交流，稳定支持度"},
+                {"text": "先做一次低风险经营动作，积累首笔收益"},
+            ],
+        },
+        "v1c2": {
+            "character": {"name": "父亲", "status": "关心", "avatar": "👴"},
+            "text": "这片地还能做起来，关键是节奏稳。别急着扩张，先把基本盘做好。",
+            "options": [
+                {"text": "优先播种并控制投入"},
+                {"text": "先观察市场，再决定作物结构"},
+                {"text": "先做一天探索，收集村里信息"},
+            ],
+        },
+        "v2c1": {
+            "character": {"name": "王楠", "status": "合作", "avatar": "🧑‍💼"},
+            "text": "如果要扩大收益，可以尝试加工链路，但要注意现金流与供应稳定。",
+            "options": [
+                {"text": "小规模试加工，验证毛利"},
+                {"text": "先扩供应，再考虑加工"},
+                {"text": "先拉通线上销售渠道"},
+            ],
+        },
+    }
+    return dialog_map.get(chapter_id, dialog_map["v1c1"])
+
+
+def _run_story_choice(engine: GameEngine, chapter_id: str, choice_text: str) -> dict[str, Any]:
+    money_before = engine.state.resources.money
+    particles_before = engine.state.resources.particles
+    energy_before = engine.state.resources.source_energy
+    laziness_before = engine.state.resources.laziness
+
+    scene = f"刘家村，第 {engine.state.turn} 天，剧情节点 {chapter_id}"
+    command = f"剧情推进：{choice_text}"
+    result_text = engine.play_panel_mode_action(scene, command)
+
+    engine.add_log(f"[剧情] {chapter_id} -> {choice_text[:40]}")
+    save_game(engine.state, WEB_SAVE_PATH)
+
+    stat_changes = {
+        "资金": engine.state.resources.money - money_before,
+        "微粒": engine.state.resources.particles - particles_before,
+        "生命源能": engine.state.resources.source_energy - energy_before,
+        "躺平意愿": engine.state.resources.laziness - laziness_before,
+    }
+    return {
+        "chapter_id": chapter_id,
+        "result_text": result_text or "剧情推进完成。",
+        "stat_changes": stat_changes,
+    }
+
+
 def _reset_game() -> str:
     engine = GameEngine()
     save_game(engine.state, WEB_SAVE_PATH)
@@ -433,6 +667,178 @@ def _to_int(value: Any, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _resolve_order_input(engine: GameEngine, order_input: str) -> str:
+    """Resolve user-provided order text to order_id.
+
+    Supports order_id, title, and copied order line text from UI.
+    """
+    raw = order_input.strip()
+    if not raw:
+        return raw
+
+    title_hint = raw.split("|", 1)[0].strip()
+    active_orders = [order for order in engine.state.active_orders if not order.completed]
+
+    for order in active_orders:
+        if raw == order.order_id:
+            return order.order_id
+        if raw == order.title or title_hint == order.title:
+            return order.order_id
+
+    for order in active_orders:
+        if order.title and order.title in raw:
+            return order.order_id
+
+    return raw
+
+
+def _seed_to_crop(seed_type: str) -> str:
+    seed_map = {
+        "wheat_seed": "vegetable",
+        "corn_seed": "watermelon",
+        "rice_seed": "rice",
+    }
+    return seed_map.get(seed_type, seed_type)
+
+
+def _execute_viz_action(engine: GameEngine, action_name: str, params: dict[str, Any]) -> tuple[bool, str]:
+    action = action_name.strip()
+    try:
+        if action == "plant":
+            plot_id = _to_int(params.get("plot_id", params.get("plotId", 1)), 1)
+            crop_id = str(params.get("crop_id", params.get("cropId", ""))).strip()
+            if not crop_id:
+                crop_id = _seed_to_crop(str(params.get("seed_type", "vegetable")))
+            return True, engine.plant_crop(plot_id, crop_id)
+        if action == "harvest":
+            return True, engine.harvest_all()
+        if action in {"water", "fertilize"}:
+            return True, "已完成田间护理。"
+        if action == "collect":
+            return True, engine.collect_livestock_products()
+        if action == "sell_item":
+            return True, engine.sell_inventory("market")
+        if action == "use_item":
+            return True, "已使用道具。"
+        if action == "sell_market":
+            return True, engine.sell_inventory("market")
+        if action == "sell_stream":
+            return True, engine.sell_inventory("stream")
+        if action == "advance_day":
+            return True, engine.advance_day()
+        if action == "raise_livestock":
+            pen_id = _to_int(params.get("pen_id", params.get("penId", 1)), 1)
+            livestock_id = str(params.get("livestock_id", params.get("livestockId", ""))).strip()
+            if not livestock_id:
+                return False, "缺少 livestock_id。"
+            return True, engine.raise_livestock(pen_id, livestock_id)
+        if action == "process":
+            recipe_id = str(params.get("recipe_id", params.get("recipeId", ""))).strip()
+            batches = _to_int(params.get("batches", 1), 1)
+            if not recipe_id:
+                return False, "缺少 recipe_id。"
+            return True, engine.process_goods(recipe_id, batches)
+        if action == "upgrade_workshop":
+            return True, engine.upgrade_workshop()
+        if action == "expand_ranch":
+            blocks = _to_int(params.get("blocks", 1), 1)
+            return True, engine.expand_ranch(blocks)
+        if action == "interact":
+            character_id = str(params.get("character_id", params.get("characterId", ""))).strip()
+            if not character_id:
+                return False, "缺少 character_id。"
+            return True, engine.interact(character_id)
+        if action == "complete_task":
+            engine.refresh_tasks()
+            return True, "任务状态已刷新。"
+        if action == "unlock_skill":
+            skill_id = str(params.get("skill_id", params.get("skillId", ""))).strip()
+            if not skill_id:
+                return False, "缺少 skill_id。"
+            return True, engine.unlock_skill(skill_id)
+        if action == "prepare_company":
+            return True, engine.prepare_company()
+        if action == "hire":
+            count = _to_int(params.get("count", 1), 1)
+            return True, engine.hire_villagers(count)
+        if action == "dividends":
+            return True, engine.distribute_dividends()
+        if action == "fulfill_order":
+            order_id = str(params.get("order_id", params.get("orderId", ""))).strip()
+            if not order_id:
+                return False, "缺少 order_id。"
+            return True, engine.fulfill_order(_resolve_order_input(engine, order_id))
+    except Exception as exc:  # pragma: no cover - defensive for bridge safety
+        return False, f"执行失败: {exc}"
+
+    return False, f"暂不支持的动作: {action}"
+
+
+def _build_viz_state_payload(engine: GameEngine) -> dict[str, Any]:
+    snapshot = engine.status_snapshot()
+    inventory_rows: dict[str, dict[str, Any]] = {}
+    for item_id, qty in engine.state.inventory.items():
+        item_def = ITEMS.get(item_id)
+        inventory_rows[item_id] = {
+            "id": item_id,
+            "name": item_def.name if item_def else item_id,
+            "count": int(qty),
+            "quantity": int(qty),
+            "type": item_def.category if item_def else "item",
+            "price": item_def.sell_price if item_def else 0,
+        }
+
+    tasks_payload: dict[str, dict[str, Any]] = {}
+    for task_id, task_state in engine.state.tasks.items():
+        task_def = TASKS.get(task_id)
+        total = int(task_def.target_value) if task_def else 1
+        progress = int(min(task_state.progress, total))
+        status = "completed" if task_state.claimed else ("in_progress" if task_state.completed else "available")
+        tasks_payload[task_id] = {
+            "task_id": task_id,
+            "name": task_def.title if task_def else task_id,
+            "title": task_def.title if task_def else task_id,
+            "description": task_def.description if task_def else "",
+            "status": status,
+            "progress": {"current": progress, "total": total},
+            "rewards": task_def.rewards if task_def else {},
+        }
+
+    farm_plots: list[dict[str, Any]] = []
+    for plot in engine.state.plots:
+        farm_plots.append(
+            {
+                "plot_id": plot.plot_id,
+                "crop_id": plot.crop_id,
+                "days_remaining": plot.days_remaining,
+                "ready_to_harvest": plot.ready_to_harvest,
+                "status": "mature" if plot.ready_to_harvest else ("planted" if plot.crop_id else "empty"),
+            }
+        )
+
+    return {
+        "money": int(snapshot.get("money", 0)),
+        "particles": int(snapshot.get("particles", 0)),
+        "land": float(snapshot.get("land", 0.0)),
+        "turn": int(snapshot.get("turn", 1)),
+        "day": int(snapshot.get("day", snapshot.get("turn", 1))),
+        "season": str(snapshot.get("season", "初夏")),
+        "weather": str(snapshot.get("weather", "晴朗")),
+        "stage": str(snapshot.get("stage", "躺平起步")),
+        "source_energy": int(snapshot.get("source_energy", 0)),
+        "prosperity": int(snapshot.get("prosperity", 0)),
+        "inventory": inventory_rows,
+        "tasks": tasks_payload,
+        "farm_plots": farm_plots,
+        "plot_report": engine.plot_report(),
+        "pen_report": engine.pen_report(),
+        "order_report": engine.order_report(),
+        "task_report": engine.task_report(),
+        "save_slots": _list_slots(),
+        "snapshot": snapshot,
+    }
 
 
 def _company_level_by_profit(total_profit: int) -> int:

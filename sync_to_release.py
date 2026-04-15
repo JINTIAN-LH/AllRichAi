@@ -79,6 +79,7 @@ def main() -> None:
     docs_target = release_src / "docs"
     exports_target = release_src / "data" / "exports"
     static_target = release_src / "assets" / "source-static"
+    viz_target = release_src / "assets" / "viz"
 
     reset_dir(docs_target)
     reset_dir(exports_target)
@@ -111,6 +112,7 @@ def main() -> None:
     )
 
     copy_dir(project_root / "farmgame" / "static", static_target)
+    copy_dir(project_root / "farmgame" / "static" / "viz", viz_target)
 
     manifest_path = release_src / "data" / "sync-manifest.json"
     write_manifest(
@@ -122,6 +124,7 @@ def main() -> None:
                 for p in copied_exports
             ],
             "static": [str(static_target.relative_to(release_src)).replace("\\\\", "/")],
+            "viz": [str(viz_target.relative_to(release_src)).replace("\\\\", "/")],
         },
     )
 
