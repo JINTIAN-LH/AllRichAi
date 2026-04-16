@@ -12,9 +12,17 @@ const EngineBridge = {
       return '';
     }
 
-    const trimmed = raw.replace(/\/+$/, '');
+    const trimmed = raw.replace(/[?#].*$/, '').replace(/\/+$/, '');
     if (trimmed.endsWith('/api/viz')) {
       return trimmed;
+    }
+
+    if (trimmed.endsWith('/api')) {
+      return `${trimmed}/viz`;
+    }
+
+    if (trimmed.endsWith('/viz')) {
+      return `${trimmed.slice(0, -4)}/api/viz`;
     }
 
     // Support configuring only backend origin, then append canonical API prefix.

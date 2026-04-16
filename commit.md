@@ -1,3 +1,27 @@
+## Commit #8: 修复可视化后端 404 与连接兜底逻辑收敛 ✅
+**日期**: 2026-04-17
+**作者**: GitHub Copilot
+**类型**: Fix + Build + Release
+
+### 工作内容
+完成“自检 -> 打包构建 -> 更新提交记录 -> 提交推送”全流程，修复可视化页面在 API 基址配置场景下容易触发的 404 问题，并移除同域在线版跳转兜底入口。
+
+### 关键改动
+- 修复 API 基址归一化逻辑（`farmgame/static/viz/js/engineBridge.js`）：
+   - 支持将 `.../api` 自动归一化为 `.../api/viz`
+   - 支持将 `.../viz` 自动归一化为 `.../api/viz`
+   - 增加 query/hash 清理，降低错误拼接导致 404 的概率
+- 收敛连接失败提示策略：
+   - 移除“打开同域在线版”兜底入口，仅保留重试/离线浏览/调试 API 配置能力
+
+### 验证结果
+- 单元测试：`python -m unittest discover -s tests` -> **21/21 通过**
+- 设计审计：`python -m farmgame --audit` -> **执行成功**
+- 打包构建：`build_dist.bat` -> **成功**
+- 路由核验：`/api/viz/state` 与 `/api/viz/action` 正常，错误路径 `/api/state` 与 `/api/action` 维持 404（符合预期）
+
+---
+
 ## Commit #7: 移除弃用发布资源并切换本地源打包链路 ✅
 **日期**: 2026-04-15
 **作者**: GitHub Copilot
