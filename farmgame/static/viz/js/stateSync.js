@@ -13,18 +13,41 @@ const StateSync = {
   
   // 轮询间隔（毫秒）
   POLL_INTERVAL: 2000,
+
+  // 连续失败达到阈值后暂停自动轮询，避免接口404时刷屏
+  MAX_FAILURES_BEFORE_PAUSE: 3,
+
+  // 同类错误日志节流窗口（毫秒）
+  ERROR_LOG_THROTTLE_MS: 15000,
   
   // 轮询定时器
   pollTimer: null,
+
+  // 当前是否处于暂停轮询状态
+  pollPaused: false,
+
+  // 错误日志节流状态
+  _lastErrorSignature: '',
+  _lastErrorLogAt: 0,
+
+  // 同步请求并发锁，避免初始化和轮询重叠导致重复请求
+  isSyncInProgress: false,
   
   // 初始化状态同步
   init() {
+    this.pollPaused = false;
     this.syncState();
     this.startPolling();
   },
   
   // 开始轮询
   startPolling() {
+    if (this.pollTimer) {
+      return;
+    }
+    if (this.pollPaused) {
+      return;
+    }
     this.pollTimer = setInterval(() => {
       this.syncState();
     }, this.POLL_INTERVAL);
@@ -40,6 +63,12 @@ const StateSync = {
   
   // 同步游戏状态
   async syncState() {
+    if (this.pollPaused || this.isSyncInProgress) {
+      return;
+    }
+
+    this.isSyncInProgress = true;
+
     try {
       const rawState = await EngineBridge.getState();
       // 确保状态结果被规范化
@@ -60,12 +89,43 @@ const StateSync = {
       }
 
       this.consecutiveFailures = 0;
+      this.pollPaused = false;
       this.hideConnectionHelper();
     } catch (error) {
       this.consecutiveFailures += 1;
+
+      const isEndpointUnavailable =
+        typeof EngineBridge !== 'undefined' &&
+        typeof EngineBridge.isEndpointUnavailableError === 'function' &&
+        EngineBridge.isEndpointUnavailableError(error);
+
+      if (isEndpointUnavailable) {
+        this.pollPaused = true;
+        this.stopPolling();
+      } else if (this.consecutiveFailures >= this.MAX_FAILURES_BEFORE_PAUSE) {
+        this.pollPaused = true;
+        this.stopPolling();
+      }
+
       this.showConnectionHelper(error);
-      console.error('同步状态失败:', error);
+      this.logSyncError(error);
+    } finally {
+      this.isSyncInProgress = false;
     }
+  },
+
+  logSyncError(error) {
+    const message = String(error && error.message ? error.message : error || '未知错误');
+    const signature = message;
+    const now = Date.now();
+    const isSameError = this._lastErrorSignature === signature;
+    const withinThrottleWindow = now - this._lastErrorLogAt < this.ERROR_LOG_THROTTLE_MS;
+    if (isSameError && withinThrottleWindow) {
+      return;
+    }
+    this._lastErrorSignature = signature;
+    this._lastErrorLogAt = now;
+    console.error('同步状态失败:', error);
   },
 
   ensureConnectionHelper() {
@@ -122,6 +182,10 @@ const StateSync = {
     const retryBtn = wrapper.querySelector('#viz-retry-sync');
     if (retryBtn) {
       retryBtn.addEventListener('click', () => {
+        if (this.pollPaused) {
+          this.pollPaused = false;
+          this.startPolling();
+        }
         this.syncState();
       });
     }
@@ -159,7 +223,8 @@ const StateSync = {
 
     if (detail) {
       const errText = String(error && error.message ? error.message : error || '未知错误');
-      detail.textContent = `状态同步已连续失败 ${this.consecutiveFailures} 次：${errText}`;
+      const pausedHint = this.pollPaused ? '。已暂停自动轮询，请检查 API 地址后点击“立即重试”。' : '';
+      detail.textContent = `状态同步已连续失败 ${this.consecutiveFailures} 次：${errText}${pausedHint}`;
     }
 
     if (input && !input.value) {

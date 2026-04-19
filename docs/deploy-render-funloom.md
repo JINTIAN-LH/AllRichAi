@@ -72,16 +72,27 @@ Expected healthy signature:
 
 ## 2) Frontend On funloom.ai
 
-Build static package locally:
+Build static package locally with explicit backend API base:
 
-```bash
-build_dist.bat
+```cmd
+build_dist.bat --api-base https://api.kurangames.com
+```
+
+PowerShell example (environment variable):
+
+```powershell
+$env:FARMGAME_API_BASE="https://api.kurangames.com"
+.\build_dist.bat
 ```
 
 Then:
 1. Upload `dist/` to funloom.ai as static site root.
-2. Open frontend settings and configure `后端 API 基地址（Render）` to your Render backend URL.
-3. Verify main flows: home, story-panel, save/load, open-mode API calls.
+2. Static package entry is now `index.html` (landing page), and visualization page is `viz.html`.
+3. Open frontend settings and configure `后端 API 基地址（Render）` to your Render backend URL (if you did not pass `--api-base` while building).
+4. Verify main flows: home, story-panel, save/load, open-mode API calls.
+
+Consistency note:
+- Keep local build `--api-base` and funloom runtime API base aligned to the same Render endpoint to reduce first-screen and API-behavior drift between local and packaged experiences.
 
 ## 3) Minimal Publish Checklist
 - Backend `/` health check passes on Render.

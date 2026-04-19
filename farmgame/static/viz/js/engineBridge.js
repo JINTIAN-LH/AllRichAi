@@ -5,6 +5,44 @@ const EngineBridge = {
   // API基础URL
   baseUrl: '/api/viz',
   _resolvedBaseUrl: null,
+  endpointUnavailableUntil: 0,
+  endpointUnavailableMessage: '',
+  ENDPOINT_UNAVAILABLE_COOLDOWN_MS: 30000,
+
+  safeGetStorageItem(key) {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return '';
+    }
+    try {
+      return window.localStorage.getItem(key) || '';
+    } catch (error) {
+      return '';
+    }
+  },
+
+  safeSetStorageItem(key, value) {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return false;
+    }
+    try {
+      window.localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  safeRemoveStorageItem(key) {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return false;
+    }
+    try {
+      window.localStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  },
 
   normalizeBaseUrl(baseUrl) {
     const raw = String(baseUrl || '').trim();
@@ -42,8 +80,8 @@ const EngineBridge = {
         configured = String(globalBase);
       }
 
-      if (!configured && window.localStorage) {
-        const cached = window.localStorage.getItem('farmgame_api_base');
+      if (!configured) {
+        const cached = this.safeGetStorageItem('farmgame_api_base');
         if (cached) {
           configured = cached;
         }
@@ -54,9 +92,7 @@ const EngineBridge = {
         const fromQuery = query.get('api_base');
         if (fromQuery) {
           configured = fromQuery;
-          if (window.localStorage) {
-            window.localStorage.setItem('farmgame_api_base', fromQuery);
-          }
+          this.safeSetStorageItem('farmgame_api_base', fromQuery);
         }
       }
     }
@@ -83,7 +119,7 @@ const EngineBridge = {
       // Ignore malformed URL/search edge cases and treat as non-debug.
     }
 
-    if (window.localStorage && window.localStorage.getItem('farmgame_debug_api') === '1') {
+    if (this.safeGetStorageItem('farmgame_debug_api') === '1') {
       return true;
     }
 
@@ -94,11 +130,11 @@ const EngineBridge = {
     const normalized = this.normalizeBaseUrl(baseUrl);
     this._resolvedBaseUrl = normalized;
 
-    if (persist && typeof window !== 'undefined' && window.localStorage) {
+    if (persist && typeof window !== 'undefined') {
       if (normalized) {
-        window.localStorage.setItem('farmgame_api_base', normalized);
+        this.safeSetStorageItem('farmgame_api_base', normalized);
       } else {
-        window.localStorage.removeItem('farmgame_api_base');
+        this.safeRemoveStorageItem('farmgame_api_base');
       }
     }
 
@@ -116,6 +152,75 @@ const EngineBridge = {
     return Array.from(new Set(candidates.map((item) => this.normalizeBaseUrl(item)).filter(Boolean)));
   },
 
+  buildFallbackBases(baseUrl) {
+    const normalized = this.normalizeBaseUrl(baseUrl);
+    const bases = [normalized];
+
+    if (normalized.endsWith('/api/viz')) {
+      const root = normalized.slice(0, -'/api/viz'.length);
+      bases.push(`${root}/api`);
+      bases.push(root || '');
+    }
+
+    if (normalized.endsWith('/api')) {
+      const root = normalized.slice(0, -'/api'.length);
+      bases.push(`${normalized}/viz`);
+      bases.push(root || '');
+    }
+
+    return Array.from(new Set(bases.map((item) => String(item || '').replace(/\/+$/, ''))));
+  },
+
+  getCandidateRequestUrls(path) {
+    const urls = [];
+    const seen = new Set();
+
+    const pushUrl = (base) => {
+      const prefix = String(base || '');
+      const url = `${prefix}${path}`;
+      if (!seen.has(url)) {
+        seen.add(url);
+        urls.push(url);
+      }
+    };
+
+    const baseCandidates = this.getCandidateBaseUrls();
+    baseCandidates.forEach((base) => {
+      this.buildFallbackBases(base).forEach((fallbackBase) => {
+        pushUrl(fallbackBase);
+      });
+    });
+
+    return urls;
+  },
+
+  createEndpointUnavailableError(message, status = 404) {
+    const error = new Error(message || `HTTP error! status: ${status}`);
+    error.code = 'API_ENDPOINT_NOT_FOUND';
+    error.status = status;
+    return error;
+  },
+
+  isEndpointUnavailableError(error) {
+    return Boolean(
+      error && (
+        error.code === 'API_ENDPOINT_NOT_FOUND' ||
+        Number(error.status) === 404 ||
+        String(error.message || '').includes('HTTP error! status: 404')
+      )
+    );
+  },
+
+  setEndpointUnavailable(message, cooldownMs = this.ENDPOINT_UNAVAILABLE_COOLDOWN_MS) {
+    this.endpointUnavailableUntil = Date.now() + Math.max(1000, Number(cooldownMs) || this.ENDPOINT_UNAVAILABLE_COOLDOWN_MS);
+    this.endpointUnavailableMessage = String(message || 'HTTP error! status: 404');
+  },
+
+  clearEndpointUnavailable() {
+    this.endpointUnavailableUntil = 0;
+    this.endpointUnavailableMessage = '';
+  },
+
   async request(path, options = {}) {
     const requestOptions = {
       headers: {
@@ -125,35 +230,63 @@ const EngineBridge = {
       ...options,
     };
     const requestMethod = String(requestOptions.method || 'GET').toUpperCase();
-    const candidates = this.getCandidateBaseUrls();
+
+    if (requestMethod === 'GET' && Date.now() < this.endpointUnavailableUntil) {
+      throw this.createEndpointUnavailableError(this.endpointUnavailableMessage || 'HTTP error! status: 404');
+    }
+
+    const candidates = this.getCandidateRequestUrls(path);
 
     let lastError = null;
+    let allCandidatesReturned404 = true;
     for (let i = 0; i < candidates.length; i += 1) {
       const candidate = candidates[i];
       const isLast = i === candidates.length - 1;
       try {
-        const response = await fetch(`${candidate}${path}`, requestOptions);
+        const response = await fetch(candidate, requestOptions);
         if (!response.ok) {
           // 404 usually indicates wrong API base in static deployments, try fallback candidates.
           if (response.status === 404 && !isLast) {
             continue;
           }
+          if (response.status !== 404) {
+            allCandidatesReturned404 = false;
+          }
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        if (this.baseUrl !== candidate) {
-          this.baseUrl = candidate;
+        allCandidatesReturned404 = false;
+        if (candidate.endsWith(path)) {
+          const resolvedBase = candidate.slice(0, -path.length);
+          if (this.baseUrl !== resolvedBase) {
+            this.baseUrl = resolvedBase;
+          }
         }
+        this.clearEndpointUnavailable();
         return response.json();
       } catch (error) {
         lastError = error;
+        if (!this.isEndpointUnavailableError(error)) {
+          allCandidatesReturned404 = false;
+        }
         if (!isLast && requestMethod === 'GET') {
           continue;
         }
-        if (!isLast && String(error?.message || '').includes('HTTP error! status: 404')) {
-          continue;
+
+        // For GET 404-like failures on the final candidate, defer throwing until after the loop
+        // so cooldown state can be set consistently in one place.
+        if (requestMethod === 'GET' && this.isEndpointUnavailableError(error)) {
+          break;
         }
         throw error;
       }
+    }
+
+    if (allCandidatesReturned404 && requestMethod === 'GET') {
+      const endpointError = this.createEndpointUnavailableError(
+        lastError?.message || 'HTTP error! status: 404'
+      );
+      this.setEndpointUnavailable(endpointError.message);
+      throw endpointError;
     }
 
     throw lastError || new Error('Request failed');
@@ -190,14 +323,9 @@ const EngineBridge = {
   
   // 获取游戏状态
   async getState() {
-    try {
-      const result = await this.request('/state', { method: 'GET' });
-      const normalized = this.normalizeResult(result);
-      return normalized.state || normalized;
-    } catch (error) {
-      console.error('获取状态失败:', error);
-      throw error;
-    }
+    const result = await this.request('/state', { method: 'GET' });
+    const normalized = this.normalizeResult(result);
+    return normalized.state || normalized;
   },
   
   // 保存游戏
