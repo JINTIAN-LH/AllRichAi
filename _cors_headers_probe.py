@@ -1,8 +1,8 @@
 ﻿import urllib.request
 import urllib.error
 
-base='https://allrichai.onrender.com/api/viz/state'
-origins=['https://funloom.kurangames.com','https://api.kurangames.com']
+base='https://allrichai-farmgame-backend.onrender.com/api/viz/state'
+origins=['https://funloom.kurangames.com','https://allrichai-farmgame-backend.onrender.com']
 
 for origin in origins:
     print(f'=== Origin: {origin} ===')

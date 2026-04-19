@@ -75,19 +75,25 @@ Expected healthy signature:
 Build static package locally with explicit backend API base:
 
 ```cmd
-build_dist.bat --api-base https://api.kurangames.com
+build_dist.bat --api-base https://allrichai-farmgame-backend.onrender.com
 ```
 
 PowerShell example (environment variable):
 
 ```powershell
-$env:FARMGAME_API_BASE="https://api.kurangames.com"
+$env:FARMGAME_API_BASE="https://allrichai-farmgame-backend.onrender.com"
 .\build_dist.bat
+```
+
+Custom-domain example (optional):
+
+```cmd
+build_dist.bat --api-base https://api.kurangames.com
 ```
 
 Then:
 1. Upload `dist/` to funloom.ai as static site root.
-2. Static package entry is now `index.html` (landing page), and visualization page is `viz.html`.
+2. Static package entry is `index.html`, which now auto-redirects to backend home (`/`) for default gameplay; visualization page remains `viz.html`.
 3. Open frontend settings and configure `后端 API 基地址（Render）` to your Render backend URL (if you did not pass `--api-base` while building).
 4. Verify main flows: home, story-panel, save/load, open-mode API calls.
 
@@ -105,13 +111,13 @@ Consistency note:
 Run once after each deployment:
 
 ```bash
-python tools/verify_online_endpoints.py --base-url https://api.kurangames.com --origin https://your-app.funloom.com
+python tools/verify_online_endpoints.py --base-url https://allrichai-farmgame-backend.onrender.com --origin https://your-app.funloom.com
 ```
 
-Render-only example:
+Custom-domain example:
 
 ```bash
-python tools/verify_online_endpoints.py --base-url https://<your-service>.onrender.com --origin https://your-app.funloom.com
+python tools/verify_online_endpoints.py --base-url https://api.kurangames.com --origin https://your-app.funloom.com
 ```
 
 Pass condition:

@@ -14,7 +14,7 @@ services:
       - key: ALLRICHAI_WEB_HOST
         value: 0.0.0.0
       - key: ALLRICHAI_ALLOWED_ORIGINS
-        value: https://funloom.kurangames.com,https://api.kurangames.com
+        value: https://funloom.kurangames.com,https://allrichai-farmgame-backend.onrender.com
       - key: ALLRICHAI_RATE_LIMIT_ENABLED
         value: "1"
       - key: ALLRICHAI_RATE_LIMIT_STORAGE

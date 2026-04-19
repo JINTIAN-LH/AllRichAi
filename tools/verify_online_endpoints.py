@@ -65,7 +65,7 @@ def _check_cors(base_url: str, origin: str) -> tuple[bool, str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify production endpoints for AllRichAI deployment")
-    parser.add_argument("--base-url", required=True, help="Backend base URL, e.g. https://api.kurangames.com")
+    parser.add_argument("--base-url", required=True, help="Backend base URL, e.g. https://allrichai-farmgame-backend.onrender.com")
     parser.add_argument("--origin", default="", help="Frontend origin used for CORS preflight check")
     args = parser.parse_args()
 

@@ -110,15 +110,13 @@ def _build_static_landing_page(api_base: str = "") -> str:
     <head>
         <meta charset=\"utf-8\">
         <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
-        <title>躺平农场主：共同富裕计划</title>
+        <title>正在进入游戏</title>
         <style>
             :root {{
                 --bg: #f4efe5;
-                --surface: rgba(255, 255, 255, 0.9);
+                --card: #fff;
                 --text: #2c241b;
                 --muted: #5c5144;
-                --primary: #1f6f43;
-                --primary-strong: #165436;
                 --border: rgba(44, 36, 27, 0.12);
             }}
             * {{ box-sizing: border-box; }}
@@ -137,64 +135,36 @@ def _build_static_landing_page(api_base: str = "") -> str:
                 justify-content: center;
                 padding: 24px;
             }}
-            .shell {{
-                width: min(900px, 100%);
+            .card {{
+                width: min(560px, 100%);
                 border: 1px solid var(--border);
-                border-radius: 20px;
-                background: var(--surface);
-                backdrop-filter: blur(4px);
-                box-shadow: 0 24px 50px rgba(44, 36, 27, 0.16);
-                padding: clamp(20px, 3vw, 32px);
+                border-radius: 16px;
+                background: var(--card);
+                box-shadow: 0 16px 34px rgba(44, 36, 27, 0.14);
+                padding: 22px;
             }}
-            h1 {{ margin: 0 0 8px; font-size: clamp(28px, 5vw, 40px); }}
-            .subtitle {{ margin: 0 0 22px; color: var(--muted); line-height: 1.6; }}
-            .actions {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                gap: 12px;
-            }}
-            .action {{
-                display: block;
-                border: 1px solid var(--border);
-                border-radius: 14px;
-                padding: 14px 16px;
-                background: #fff;
-                color: var(--text);
+            h1 {{ margin: 0 0 8px; font-size: 24px; }}
+            p {{ margin: 0 0 12px; line-height: 1.6; color: var(--muted); }}
+            .btn {{
+                display: inline-block;
+                margin-top: 8px;
+                border: 1px solid #1f6f43;
+                border-radius: 10px;
+                padding: 10px 14px;
+                background: #1f6f43;
+                color: #fff;
                 text-decoration: none;
-                transition: transform .18s ease, box-shadow .18s ease;
+                font-weight: 600;
             }}
-            .action:hover {{
-                transform: translateY(-2px);
-                box-shadow: 0 12px 26px rgba(44, 36, 27, 0.15);
-            }}
-            .action strong {{ display: block; font-size: 16px; margin-bottom: 6px; }}
-            .action span {{ color: var(--muted); font-size: 14px; line-height: 1.5; }}
-            .primary {{
-                border-color: rgba(31, 111, 67, 0.28);
-                background: linear-gradient(135deg, #1f6f43, #2f8a59);
-                color: #f7fff8;
-            }}
-            .primary span {{ color: rgba(247, 255, 248, 0.9); }}
-            .footnote {{ margin-top: 18px; color: var(--muted); font-size: 13px; line-height: 1.6; }}
-            .hidden {{ display: none !important; }}
+            .hidden {{ display: none; }}
         </style>
         <script id=\"farmgame-api-base\">window.__FARMGAME_API_BASE__={safe_api_base};</script>
     </head>
     <body>
-        <main class=\"shell\">
-            <h1>躺平农场主：共同富裕计划</h1>
-            <p class=\"subtitle\">线上包默认进入这个导航页，避免在后端接口未就绪时直接触发可视化轮询刷屏。</p>
-            <section class=\"actions\">
-                <a class=\"action primary\" href=\"./viz.html\">
-                    <strong>进入可视化玩法</strong>
-                    <span>静态包内置页面，适合手机端快速体验。</span>
-                </a>
-                <a class=\"action\" id=\"backend-home\" href=\"#\">
-                    <strong>进入后端首页（与本地开发一致）</strong>
-                    <span id=\"backend-home-tip\">检测到 API 地址后，将跳转到后端主页。</span>
-                </a>
-            </section>
-            <p class=\"footnote\">如果后端接口地址配置错误，请在可视化页面的连接提示框中修正 API 基地址后再重试。</p>
+        <main class=\"card\">
+            <h1>正在进入游戏</h1>
+            <p id=\"status-text\">系统将自动跳转到后端首页（默认本地开发版玩法）。</p>
+            <a id=\"manual-link\" class=\"btn hidden\" href=\"./viz.html\">若未自动跳转，点击进入可视化页</a>
         </main>
         <script>
             (function () {{
@@ -203,23 +173,31 @@ def _build_static_landing_page(api_base: str = "") -> str:
                     configured = String(window.__FARMGAME_API_BASE__ || '').trim();
                 }} catch (e) {{}}
 
-                var normalized = configured.replace(/\\/+$/, '');
+                var normalized = configured;
+                while (normalized.endsWith('/')) {{
+                    normalized = normalized.slice(0, -1);
+                }}
                 if (normalized.endsWith('/api/viz')) {{
                     normalized = normalized.slice(0, -'/api/viz'.length);
                 }} else if (normalized.endsWith('/api')) {{
                     normalized = normalized.slice(0, -'/api'.length);
                 }}
 
-                var link = document.getElementById('backend-home');
-                var tip = document.getElementById('backend-home-tip');
-                if (!link || !tip) {{
-                    return;
-                }}
+                var statusEl = document.getElementById('status-text');
+                var manualLink = document.getElementById('manual-link');
                 if (normalized) {{
-                    link.href = normalized + '/';
-                    tip.textContent = '当前将跳转到：' + normalized + '/';
+                    var target = normalized + '/';
+                    if (statusEl) {{
+                        statusEl.textContent = '正在跳转到：' + target;
+                    }}
+                    window.location.replace(target);
                 }} else {{
-                    link.classList.add('hidden');
+                    if (statusEl) {{
+                        statusEl.textContent = '未检测到后端 API 地址，请使用打包参数 --api-base 配置后重新发布。';
+                    }}
+                    if (manualLink) {{
+                        manualLink.classList.remove('hidden');
+                    }}
                 }}
             }})();
         </script>
